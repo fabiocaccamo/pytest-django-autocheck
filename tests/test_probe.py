@@ -145,11 +145,13 @@ def test_arm_deadline_returns_false_without_env(monkeypatch) -> None:
 
 def test_arm_deadline_returns_false_for_invalid_value(monkeypatch) -> None:
     monkeypatch.setenv(probe.PROBE_DEADLINE_ENV, "not-a-number")
+    _fake_sigalrm(monkeypatch)
     assert probe._arm_deadline() is False
 
 
 def test_arm_deadline_returns_false_for_non_positive(monkeypatch) -> None:
     monkeypatch.setenv(probe.PROBE_DEADLINE_ENV, "0")
+    _fake_sigalrm(monkeypatch)
     assert probe._arm_deadline() is False
 
 
