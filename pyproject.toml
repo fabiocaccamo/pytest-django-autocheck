@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pytest-django-autocheck"
-version = "0.1.0"
+dynamic = ["version"]
 description = "zero-config pytest plugin that runs generic safety checks on any Django project."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -67,6 +67,9 @@ django_autocheck = "pytest_django_autocheck.plugin"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.dynamic.version]
+attr = "pytest_django_autocheck.metadata.__version__"
 
 [tool.setuptools.package-data]
 pytest_django_autocheck = ["py.typed"]

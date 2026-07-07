@@ -6,8 +6,7 @@ any test. The full set of built-in checks is registered in the ``checks``
 subpackage.
 """
 
-__version__ = "0.1.0"
-
+from pytest_django_autocheck.metadata import __version__
 from pytest_django_autocheck.registry import (
     BaseCheck,
     Check,
