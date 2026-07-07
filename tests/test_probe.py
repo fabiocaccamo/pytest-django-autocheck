@@ -1,11 +1,30 @@
 """Tests for the out-of-process migration probe."""
 
-import signal
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from pytest_django_autocheck.checks import probe
+
+
+def _fake_sigalrm(monkeypatch) -> tuple[list, list]:
+    """Give ``probe.signal`` a working fake SIGALRM on every platform.
+
+    Returns the recorded ``signal()`` and ``alarm()`` calls. Keeps the alarm
+    tests runnable (and the arm/cancel lines covered) on Windows, where the
+    real ``signal`` module has no ``SIGALRM``.
+    """
+    signal_calls: list = []
+    alarm_calls: list = []
+    monkeypatch.setattr(probe.signal, "SIGALRM", 14, raising=False)
+    monkeypatch.setattr(probe.signal, "signal", lambda *args: signal_calls.append(args))
+    monkeypatch.setattr(
+        probe.signal,
+        "alarm",
+        lambda seconds: alarm_calls.append(seconds),
+        raising=False,
+    )
+    return signal_calls, alarm_calls
 
 
 def test_isolated_test_name_for_file_database() -> None:
@@ -134,16 +153,14 @@ def test_arm_deadline_returns_false_for_non_positive(monkeypatch) -> None:
     assert probe._arm_deadline() is False
 
 
-@pytest.mark.skipif(not hasattr(signal, "SIGALRM"), reason="SIGALRM not available")
 def test_arm_deadline_arms_and_cancels_alarm(monkeypatch) -> None:
     monkeypatch.setenv(probe.PROBE_DEADLINE_ENV, "300")
-    previous = signal.getsignal(signal.SIGALRM)
-    try:
-        assert probe._arm_deadline() is True
-    finally:
-        probe._cancel_deadline(True)
-        signal.signal(signal.SIGALRM, previous)
-    assert signal.alarm(0) == 0
+    signal_calls, alarm_calls = _fake_sigalrm(monkeypatch)
+    assert probe._arm_deadline() is True
+    assert signal_calls == [(14, probe._raise_probe_timeout)]
+    assert alarm_calls == [300]
+    probe._cancel_deadline(True)
+    assert alarm_calls == [300, 0]
 
 
 def test_arm_deadline_returns_false_without_sigalrm(monkeypatch) -> None:
@@ -173,15 +190,11 @@ def test_main_returns_setup_error_on_cycle_timeout(monkeypatch) -> None:
     connection.creation.destroy_test_db.assert_called_once()
 
 
-@pytest.mark.skipif(not hasattr(signal, "SIGALRM"), reason="SIGALRM not available")
 def test_main_cancels_deadline_on_success(monkeypatch) -> None:
     monkeypatch.setenv(probe.PROBE_DEADLINE_ENV, "300")
+    _, alarm_calls = _fake_sigalrm(monkeypatch)
     connection = MagicMock()
     connection.settings_dict = {"NAME": ":memory:", "TEST": {}}
-    previous = signal.getsignal(signal.SIGALRM)
-    try:
-        with _patch_django(connection), patch.object(probe, "run_cycle"):
-            assert probe.main() == probe.EXIT_OK
-    finally:
-        signal.signal(signal.SIGALRM, previous)
-    assert signal.alarm(0) == 0
+    with _patch_django(connection), patch.object(probe, "run_cycle"):
+        assert probe.main() == probe.EXIT_OK
+    assert alarm_calls == [300, 0]
