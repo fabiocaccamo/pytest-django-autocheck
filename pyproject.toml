@@ -1,0 +1,120 @@
+[build-system]
+requires = ["setuptools>=77.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pytest-django-autocheck"
+version = "0.1.0"
+description = "Zero-config pytest plugin: instant safety net for any Django project."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Fabio Caccamo", email = "fabio.caccamo@gmail.com" }]
+keywords = [
+    "pytest",
+    "django",
+    "testing",
+    "checks",
+    "ci",
+    "plugin",
+    "quality",
+    "migrations",
+    "smoke-test",
+    "zero-config",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: Django",
+    "Framework :: Django :: 5.0",
+    "Framework :: Django :: 5.1",
+    "Framework :: Django :: 5.2",
+    "Framework :: Django :: 6.0",
+    "Framework :: Pytest",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = [
+    "pytest>=8.0",
+    "pytest-django>=4.8",
+    "django>=5.0",
+    "model-bakery>=1.17",
+]
+
+[project.optional-dependencies]
+test = [
+    "coverage[toml]",
+    "factory-boy>=3.3",
+    "djangorestframework>=3.15",
+    "tox",
+    "pre-commit",
+]
+
+[project.urls]
+Homepage = "https://github.com/fabiocaccamo/pytest-django-autocheck"
+Issues = "https://github.com/fabiocaccamo/pytest-django-autocheck/issues"
+
+[project.entry-points.pytest11]
+django_autocheck = "pytest_django_autocheck.plugin"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+pytest_django_autocheck = ["py.typed"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "tests.settings"
+addopts = "--strict-markers --autocheck"
+pythonpath = [".", "src"]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["pytest_django_autocheck"]
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | venv
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+ignore = ["E501"]
+select = ["B", "B9", "C", "E", "F", "I", "W"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
