@@ -19,6 +19,8 @@ assumption is made about the project under inspection. The admin site is
 injectable for testability and defaults to ``django.contrib.admin.site``.
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from django.contrib import admin

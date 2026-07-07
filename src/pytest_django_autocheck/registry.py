@@ -5,6 +5,8 @@ registered via entry points) must follow, and the registry that runs them in
 registration order.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 

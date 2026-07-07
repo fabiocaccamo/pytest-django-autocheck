@@ -17,6 +17,8 @@ import, never on a fixed folder layout, and is a no-op when ``factory_boy`` is
 not installed in the project.
 """
 
+from __future__ import annotations
+
 import importlib
 from functools import lru_cache
 from typing import TYPE_CHECKING

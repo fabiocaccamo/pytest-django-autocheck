@@ -11,6 +11,8 @@ probe (which apps to reverse on the throwaway database) rely on this logic, so
 it lives in a single place to stay consistent.
 """
 
+from __future__ import annotations
+
 import functools
 import os
 import site

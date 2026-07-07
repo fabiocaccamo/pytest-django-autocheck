@@ -24,6 +24,8 @@ as ``ERROR``; if the environment cannot be set up, the dynamic step is skipped
 with a ``WARNING`` and never breaks the suite.
 """
 
+from __future__ import annotations
+
 import os
 import subprocess
 import sys

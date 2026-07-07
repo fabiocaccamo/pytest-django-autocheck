@@ -13,6 +13,8 @@ required fields and foreign keys recursively, with no assumption about the
 project under inspection.
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from django.apps import apps

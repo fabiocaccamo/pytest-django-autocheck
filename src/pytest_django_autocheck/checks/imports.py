@@ -20,6 +20,8 @@ the project instead of installed via pip): its own directory is detected by
 path and pruned from the walk, so the check never imports its own modules.
 """
 
+from __future__ import annotations
+
 import importlib
 import os
 from typing import TYPE_CHECKING

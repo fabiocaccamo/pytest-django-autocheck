@@ -11,6 +11,8 @@ are forms merely imported into the module: only the model forms actually
 defined by a project app are inspected.
 """
 
+from __future__ import annotations
+
 import importlib
 from typing import TYPE_CHECKING
 

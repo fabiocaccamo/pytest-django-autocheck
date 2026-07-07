@@ -12,6 +12,8 @@ serializers (no ``Meta.model`` and no declared fields) and serializers merely
 imported into the module are skipped.
 """
 
+from __future__ import annotations
+
 import importlib
 from typing import TYPE_CHECKING
 

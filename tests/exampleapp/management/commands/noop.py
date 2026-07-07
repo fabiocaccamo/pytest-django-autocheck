@@ -1,5 +1,7 @@
 """A no-op management command used to exercise the commands check."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from django.core.management.base import BaseCommand

@@ -5,6 +5,8 @@ callers must run it inside an environment where Django is configured and the
 database is reachable.
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from pytest_django_autocheck.registry import load_builtin_checks, registry

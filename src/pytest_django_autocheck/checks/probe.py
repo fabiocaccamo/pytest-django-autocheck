@@ -25,6 +25,8 @@ Exit codes:
   never breaks a foreign CI).
 """
 
+from __future__ import annotations
+
 import os
 import signal
 import sys

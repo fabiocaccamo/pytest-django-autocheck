@@ -11,6 +11,8 @@ into the standard pytest report (``ERROR`` findings fail the run,
 ``WARNING``/``INFO`` are shown alongside).
 """
 
+from __future__ import annotations
+
 import os
 import re
 import sys

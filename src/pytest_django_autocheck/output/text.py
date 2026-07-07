@@ -1,5 +1,7 @@
 """Human readable text output for local use."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:

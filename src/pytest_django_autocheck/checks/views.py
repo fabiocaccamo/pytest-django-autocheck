@@ -25,6 +25,8 @@ Like the urls check, this one starts from ``get_resolver()`` (the active
 compatibility and ignored.
 """
 
+from __future__ import annotations
+
 import inspect
 import os
 from typing import TYPE_CHECKING

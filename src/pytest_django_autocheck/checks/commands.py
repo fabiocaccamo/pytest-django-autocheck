@@ -10,6 +10,8 @@ Commands shipped by Django itself and by third-party apps are skipped: only
 commands whose owning app is a project app are inspected.
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from django.core.management import get_commands, load_command_class

@@ -13,6 +13,8 @@ The check makes no assumption about the project: it starts from
 reverse lookups use the fully qualified names.
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from django.urls import NoReverseMatch, get_resolver, reverse

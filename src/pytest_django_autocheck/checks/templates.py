@@ -12,6 +12,8 @@ directories: templates shipped by Django itself or by third-party apps (under
 does not own.
 """
 
+from __future__ import annotations
+
 import os
 from typing import TYPE_CHECKING
 

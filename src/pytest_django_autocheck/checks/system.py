@@ -23,6 +23,8 @@ off by default because they fail on development/test settings; set
 audit.
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from django.core import checks as django_checks
