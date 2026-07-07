@@ -1,5 +1,19 @@
 # pytest-django-autocheck
 
+[![](https://img.shields.io/pypi/pyversions/pytest-django-autocheck.svg?color=blue&logo=python&logoColor=white)](https://www.python.org/)
+[![](https://img.shields.io/pypi/djversions/pytest-django-autocheck?color=0C4B33&logo=django&logoColor=white&label=django)](https://www.djangoproject.com/)
+[![](https://img.shields.io/pypi/v/pytest-django-autocheck.svg?color=blue&logo=pypi&logoColor=white)](https://pypi.org/project/pytest-django-autocheck/)
+[![](https://static.pepy.tech/badge/pytest-django-autocheck/month)](https://pepy.tech/project/pytest-django-autocheck)
+[![](https://img.shields.io/github/stars/fabiocaccamo/pytest-django-autocheck?logo=github&style=flat)](https://github.com/fabiocaccamo/pytest-django-autocheck/stargazers)
+[![](https://img.shields.io/pypi/l/pytest-django-autocheck.svg?color=blue)](https://github.com/fabiocaccamo/pytest-django-autocheck/blob/main/LICENSE)
+
+[![](https://results.pre-commit.ci/badge/github/fabiocaccamo/pytest-django-autocheck/main.svg)](https://results.pre-commit.ci/latest/github/fabiocaccamo/pytest-django-autocheck/main)
+[![](https://img.shields.io/github/actions/workflow/status/fabiocaccamo/pytest-django-autocheck/test-package.yml?branch=main&label=build&logo=github)](https://github.com/fabiocaccamo/pytest-django-autocheck)
+[![](https://img.shields.io/codecov/c/gh/fabiocaccamo/pytest-django-autocheck?logo=codecov)](https://codecov.io/gh/fabiocaccamo/pytest-django-autocheck)
+[![](https://img.shields.io/badge/code%20style-black-000000.svg?logo=python&logoColor=black)](https://github.com/psf/black)
+[![](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/fabiocaccamo/pytest-django-autocheck/badge)](https://securityscorecards.dev/viewer/?uri=github.com/fabiocaccamo/pytest-django-autocheck)
+
 Zero-config [pytest](https://docs.pytest.org/) plugin that runs generic safety
 checks on any Django project without writing a single test.
 
