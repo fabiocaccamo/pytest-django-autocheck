@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pytest-django-autocheck"
 version = "0.1.0"
-description = "Zero-config pytest plugin: instant safety net for any Django project."
+description = "zero-config pytest plugin that runs generic safety checks on any Django project."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"

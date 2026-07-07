@@ -14,8 +14,7 @@
 [![](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/fabiocaccamo/pytest-django-autocheck/badge)](https://securityscorecards.dev/viewer/?uri=github.com/fabiocaccamo/pytest-django-autocheck)
 
-Zero-config [pytest](https://docs.pytest.org/) plugin that runs generic safety
-checks on any Django project without writing a single test.
+Zero-config [pytest](https://docs.pytest.org/) plugin that runs generic safety checks on any Django project. .
 
 Pulls in [pytest-django](https://pytest-django.readthedocs.io/) automatically
 and discovers Django settings from your `manage.py`. Install and run:
