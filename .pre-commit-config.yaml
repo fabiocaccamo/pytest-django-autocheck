@@ -11,22 +11,24 @@ repos:
     rev: v6.0.0
     hooks:
       - id: check-ast
-        language_version: python3.14
   - repo: https://github.com/asottile/pyupgrade
     rev: v3.21.2
     hooks:
       - id: pyupgrade
-        args: ["--py314-plus"]
+        # keep in sync with requires-python in pyproject.toml
+        args: ["--py310-plus"]
   - repo: https://github.com/adamchainz/django-upgrade
     rev: 1.30.0
     hooks:
       - id: django-upgrade
-        args: ["--target-version", "6.0"]
+        # keep in sync with the minimum supported Django (pyproject.toml)
+        args: ["--target-version", "5.0"]
   - repo: https://github.com/adamchainz/djade-pre-commit
     rev: "1.9.0"
     hooks:
       - id: djade
-        args: ["--target-version", "6.0"]
+        # keep in sync with the minimum supported Django (pyproject.toml)
+        args: ["--target-version", "5.0"]
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.18
     hooks:
