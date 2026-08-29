@@ -191,4 +191,5 @@ def _run_check_item(check: Check) -> None:
     if non_errors:
         warnings.warn(format_text(non_errors), AutocheckWarning, stacklevel=2)
     if errors:
-        pytest.fail(format_text(findings), pytrace=False)
+        # Non-error findings were already emitted as warnings above.
+        pytest.fail(format_text(errors), pytrace=False)

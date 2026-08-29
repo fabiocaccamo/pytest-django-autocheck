@@ -142,9 +142,11 @@ def test_run_check_item_reports_warnings_alongside_errors() -> None:
 
     with (
         pytest.warns(plugin.AutocheckWarning, match="careful"),
-        pytest.raises(Failed, match="boom"),
+        pytest.raises(Failed, match="boom") as excinfo,
     ):
         plugin._run_check_item(Mixed())
+    # The warning is already emitted above: the failure lists errors only.
+    assert "careful" not in str(excinfo.value)
 
 
 _MANAGE_PY = (
