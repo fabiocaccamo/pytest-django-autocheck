@@ -90,7 +90,7 @@ Valid check names for both flags: `admin`, `forms`, `imports`,
 
 | Check | Description |
 |-------|-------------|
-| `admin` | Every admin registered for a *project* model validates its configuration and renders its changelist and changeform without 500/404. Admins for third-party models and for models defined inside a `tests` package are skipped. |
+| `admin` | Every admin registered for a *project* model validates its configuration and renders its changelist and changeform without 500/404. Any redirect is reported as `WARNING`: the client is logged in as a superuser, so a redirect (SSL/www rewrite or a bounce to the login page) means the view was never exercised. Admins for third-party models and for models defined inside a `tests` package are skipped. |
 | `forms` | Every `ModelForm` defined in a project app's `forms` module instantiates without raising. |
 | `imports` | Every module of every project app imports without `ImportError` or circular import (third-party pip apps are skipped). |
 | `management_commands` | Every management command defined by a project app loads its class and builds its argument parser without raising. |
@@ -98,9 +98,15 @@ Valid check names for both flags: `admin`, `forms`, `imports`,
 | `models` | Every *project* model is instantiable, savable, and stringifiable via both `str()` and `repr()`. Third-party and `django.contrib` models are skipped, as are test-support models defined inside a `tests` package (a top-level `tests/` or an app-level `{app}/tests/`). |
 | `serializers` | Every Django REST Framework serializer defined in a project app (`<app>.serializers` or `<app>.api.serializers`) binds its fields without raising. Skipped entirely when `djangorestframework` isn't installed. |
 | `system_checks` | Runs Django's own system check framework (`django.core.checks`) and reports every error, warning and info message it raises. |
-| `templates` | Every template under the project's own template directories compiles without a `TemplateSyntaxError`. |
+| `templates` | Every template under the project's own template directories compiles without a `TemplateSyntaxError`. Only the Django template backend is inspected: Jinja2 templates are not compiled. |
 | `urls` | Every URL pattern loads its included URLconf, resolves its callback, and reverses without raising (other than `NoReverseMatch`). |
-| `views` | Every named URL that reverses without arguments and whose view is owned by a *project* app is requested with `GET` by an unauthenticated client; a raised exception or an HTTP 5xx response is reported. Anything below 500 (redirects, 403, 404) is a legitimate answer for an anonymous client and is ignored. Views shipped by third-party packages are skipped (ownership is resolved from the view callback's module, for both function-based and class-based views), and the `admin` namespace is skipped because the `admin` check already exercises it with a superuser. |
+| `views` | Every named URL that reverses without arguments and whose view is owned by a *project* app is requested with `GET` by an unauthenticated client; a raised exception or an HTTP 5xx response is reported. Anything below 500 (redirects, 403, 404) is a legitimate answer for an anonymous client and is ignored. Views shipped by third-party packages are skipped (ownership is resolved from the view callback's module, for both function-based and class-based views), and the `admin` namespace is skipped because the `admin` check already exercises it with a superuser. Known caveat: a `TemplateView.as_view(template_name=...)` declared directly in `urls.py` is skipped, because its `view_class` is Django's own. |
+
+Project-vs-third-party detection is filesystem based: an app is considered
+third-party when it lives under `site-packages`, the standard library or the
+environment prefix. A dependency installed in editable mode (`pip install -e`)
+lives outside those locations and is therefore inspected as project code; use
+the `SKIP`/`CHECKS` settings (or `MODELS_EXCLUDE`) if its findings are noise.
 
 ### Settings
 
