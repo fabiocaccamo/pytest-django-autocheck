@@ -141,6 +141,22 @@ The `serializers` check requires
 [Django REST Framework](https://www.django-rest-framework.org/) and is skipped
 if it's not installed.
 
+### Custom checks
+
+Third-party packages can ship their own checks through the
+`pytest_django_autocheck.checks` entry-point group. Each entry point must
+resolve to a check class (instantiated with no arguments) or a check instance
+exposing `name`, `severity` and `run(app_configs) -> list[Finding]`:
+
+```toml
+[project.entry-points."pytest_django_autocheck.checks"]
+mycheck = "mypackage.checks:MyCheck"
+```
+
+Registered checks run like the built-in ones: they get their own pytest item,
+their name works with `--autocheck-only`/`--autocheck-skip` and the `CHECKS`/
+`SKIP` settings, and their `ERROR` findings fail the run.
+
 ## Testing
 
 ```bash

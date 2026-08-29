@@ -9,7 +9,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pytest_django_autocheck.registry import load_builtin_checks, registry
+from pytest_django_autocheck.registry import (
+    load_builtin_checks,
+    load_entry_point_checks,
+    registry,
+)
 from pytest_django_autocheck.settings import get_setting
 
 if TYPE_CHECKING:
@@ -31,6 +35,7 @@ def get_checks(
     applied after the inclusion, so a check named in both is skipped.
     """
     load_builtin_checks()
+    load_entry_point_checks()
     checks = registry.checks
     known = {check.name for check in checks}
     if only is None:

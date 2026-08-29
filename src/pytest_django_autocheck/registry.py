@@ -87,3 +87,34 @@ registry = CheckRegistry()
 def load_builtin_checks() -> None:
     """Register the built-in checks."""
     from pytest_django_autocheck import checks  # noqa: F401  (registers on import)
+
+
+ENTRY_POINT_GROUP = "pytest_django_autocheck.checks"
+
+_entry_points_loaded = False
+
+
+def load_entry_point_checks() -> None:
+    """Register third-party checks declared under :data:`ENTRY_POINT_GROUP`.
+
+    Each entry point must resolve to a check class (instantiated with no
+    arguments) or a ready check instance satisfying :class:`Check`. A broken
+    entry point raises instead of being skipped: silently ignoring it would
+    green-light a project that believes its custom check is running.
+    """
+    global _entry_points_loaded
+    if _entry_points_loaded:
+        return
+    _entry_points_loaded = True
+    from importlib.metadata import entry_points
+
+    for entry_point in entry_points(group=ENTRY_POINT_GROUP):
+        loaded = entry_point.load()
+        check = loaded() if isinstance(loaded, type) else loaded
+        if not isinstance(check, Check):
+            raise TypeError(
+                f"entry point '{entry_point.name}' in group "
+                f"'{ENTRY_POINT_GROUP}' must provide a check with 'name', "
+                "'severity' and 'run(app_configs)'."
+            )
+        registry.register(check)
