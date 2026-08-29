@@ -73,6 +73,24 @@ def test_vendored_package_is_pruned_from_walk(tmp_path, monkeypatch) -> None:
     assert not any("pytest_django_autocheck" in module for module in discovered)
 
 
+def test_hidden_and_node_modules_dirs_are_pruned_from_walk(tmp_path) -> None:
+    app_dir = tmp_path / "myapp"
+    (app_dir / ".venv" / "lib").mkdir(parents=True)
+    (app_dir / "node_modules" / "pkg").mkdir(parents=True)
+    (app_dir / "service.py").write_text("x = 1\n", encoding="utf-8")
+    (app_dir / ".venv" / "lib" / "mod.py").write_text("x = 1\n", encoding="utf-8")
+    (app_dir / "node_modules" / "pkg" / "mod.py").write_text(
+        "x = 1\n", encoding="utf-8"
+    )
+
+    class FakeConfig:
+        name = "myapp"
+        path = str(app_dir)
+
+    discovered = set(ImportsCheck._iter_app_modules(FakeConfig()))
+    assert discovered == {"myapp.service"}
+
+
 def test_module_prefix_root_uses_base_name() -> None:
     assert ImportsCheck._module_prefix("app", os.sep + "base", os.sep + "base") == "app"
 

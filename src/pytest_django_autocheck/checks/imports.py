@@ -39,7 +39,7 @@ if TYPE_CHECKING:
 
     from django.apps.config import AppConfig
 
-_SKIP_DIRS = {"__pycache__", "migrations"}
+_SKIP_DIRS = {"__pycache__", "migrations", "node_modules"}
 
 
 class ImportsCheck(BaseCheck):
@@ -95,10 +95,13 @@ class ImportsCheck(BaseCheck):
         base_name = app_config.name
         own = own_package_dir()
         for root, dirs, files in os.walk(base_path):
+            # Hidden directories (.venv, .git, .tox) and node_modules can
+            # contain .py files that are not the app's own modules.
             dirs[:] = [
                 d
                 for d in dirs
                 if d not in _SKIP_DIRS
+                and not d.startswith(".")
                 and os.path.realpath(os.path.join(root, d)) != own
             ]
             prefix = ImportsCheck._module_prefix(base_name, base_path, root)
