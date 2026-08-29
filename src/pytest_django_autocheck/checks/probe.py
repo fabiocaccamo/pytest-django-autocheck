@@ -23,6 +23,12 @@ Exit codes:
 - ``1``: a migration could not be applied or reversed (reported as ``ERROR``).
 - ``2``: the environment could not be set up (reported as ``WARNING`` so it
   never breaks a foreign CI).
+
+Creating the throwaway database both creates the database itself and applies
+every migration to it, so a failure there is classified by its traceback:
+frames inside ``django/db/migrations`` mean a migration failed (``ERROR``),
+anything else (e.g. the database user lacks the CREATEDB privilege, common on
+CI with pre-created databases) is an environment problem (``WARNING``).
 """
 
 from __future__ import annotations
@@ -79,6 +85,24 @@ def _arm_deadline() -> bool:
 def _cancel_deadline(armed: bool) -> None:
     if armed:
         signal.alarm(0)
+
+
+_MIGRATIONS_PATH_FRAGMENT = os.path.join("django", "db", "migrations") + os.sep
+
+
+def _is_migration_failure(exc: BaseException) -> bool:
+    """Return ``True`` when the exception was raised while migrating.
+
+    ``create_test_db`` fails both on environment problems (no CREATEDB
+    privilege) and on broken migrations; only the latter walk through
+    ``django/db/migrations`` frames, so the traceback tells them apart.
+    """
+    tb = exc.__traceback__
+    while tb is not None:
+        if _MIGRATIONS_PATH_FRAGMENT in tb.tb_frame.f_code.co_filename:
+            return True
+        tb = tb.tb_next
+    return False
 
 
 def isolated_test_name(base_name: str | None, token: str | None = None) -> str | None:
@@ -146,7 +170,9 @@ def main() -> int:
     except Exception as exc:  # noqa: BLE001
         _cancel_deadline(armed)
         print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
-        return EXIT_MIGRATION_ERROR
+        if _is_migration_failure(exc):
+            return EXIT_MIGRATION_ERROR
+        return EXIT_SETUP_ERROR
 
     try:
         run_cycle(connection)

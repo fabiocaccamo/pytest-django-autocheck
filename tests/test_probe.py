@@ -106,12 +106,41 @@ def test_main_returns_ok_on_success() -> None:
     connection.creation.destroy_test_db.assert_called_once()
 
 
-def test_main_returns_migration_error_when_create_fails() -> None:
+def test_main_returns_setup_error_when_create_fails_outside_migrations() -> None:
     connection = MagicMock()
     connection.settings_dict = {"NAME": ":memory:", "TEST": {}}
-    connection.creation.create_test_db.side_effect = RuntimeError("boom")
+    connection.creation.create_test_db.side_effect = RuntimeError("permission denied")
+    with _patch_django(connection):
+        assert probe.main() == probe.EXIT_SETUP_ERROR
+
+
+def test_main_returns_migration_error_when_create_fails_in_migrations() -> None:
+    def broken_migration(*args, **kwargs):
+        from django.db.migrations.operations import RunPython
+
+        RunPython("not a callable")
+
+    connection = MagicMock()
+    connection.settings_dict = {"NAME": ":memory:", "TEST": {}}
+    connection.creation.create_test_db.side_effect = broken_migration
     with _patch_django(connection):
         assert probe.main() == probe.EXIT_MIGRATION_ERROR
+
+
+def test_is_migration_failure_true_for_migrations_frames() -> None:
+    from django.db.migrations.operations import RunPython
+
+    try:
+        RunPython("not a callable")
+    except Exception as exc:  # noqa: BLE001
+        assert probe._is_migration_failure(exc) is True
+
+
+def test_is_migration_failure_false_for_other_frames() -> None:
+    try:
+        raise ValueError("permission denied")
+    except ValueError as exc:
+        assert probe._is_migration_failure(exc) is False
 
 
 def test_main_returns_migration_error_when_cycle_fails() -> None:
