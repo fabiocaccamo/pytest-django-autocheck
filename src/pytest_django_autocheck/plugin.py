@@ -131,6 +131,13 @@ def pytest_configure(config: pytest.Config) -> None:
         "markers",
         "autocheck: mark a test as part of the Django autocheck suite.",
     )
+    # Non-error findings are reported as AutocheckWarning; without this filter
+    # a project running with ``filterwarnings = ["error"]`` would turn every
+    # WARNING/INFO finding into a failure, inverting the severity contract.
+    config.addinivalue_line(
+        "filterwarnings",
+        "always::pytest_django_autocheck.plugin.AutocheckWarning",
+    )
 
 
 def pytest_collection_modifyitems(

@@ -47,6 +47,30 @@ def test_autocheck_items_are_injected(pytestconfig) -> None:
     assert pytestconfig.option.autocheck is True
 
 
+def test_configure_registers_marker_and_warning_filter() -> None:
+    lines: list[tuple[str, str]] = []
+
+    class FakeConfig:
+        def addinivalue_line(self, name, line):
+            lines.append((name, line))
+
+    plugin.pytest_configure(FakeConfig())
+    names = [name for name, _line in lines]
+    assert "markers" in names
+    assert (
+        "filterwarnings",
+        "always::pytest_django_autocheck.plugin.AutocheckWarning",
+    ) in lines
+
+
+def test_autocheck_warning_is_not_promoted_to_error(pytestconfig) -> None:
+    # The dogfooding run would already fail if the always filter were missing
+    # under -W error; assert the filter is effectively registered.
+    assert "always::pytest_django_autocheck.plugin.AutocheckWarning" in (
+        pytestconfig.getini("filterwarnings")
+    )
+
+
 def test_run_check_item_passes_when_no_findings() -> None:
     class Clean:
         name = "clean"
