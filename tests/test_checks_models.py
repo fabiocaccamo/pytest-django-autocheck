@@ -2,6 +2,7 @@
 
 import pytest
 from django.apps import apps
+from django.test import override_settings
 
 from pytest_django_autocheck.checks import models as models_module
 from pytest_django_autocheck.checks.models import ModelsCheck
@@ -42,6 +43,24 @@ def test_test_support_models_are_skipped(monkeypatch) -> None:
     monkeypatch.setattr(Author, "__module__", "tests.exampleapp.tests.models")
     inspected = {model.__name__ for model in ModelsCheck._iter_models(_exampleapp())}
     assert "Author" not in inspected
+
+
+@override_settings(PYTEST_DJANGO_AUTOCHECK_MODELS_EXCLUDE=["ExampleApp.Author"])
+def test_excluded_models_are_reported_as_info_and_never_built(monkeypatch) -> None:
+    real_make_instance = models_module.make_instance
+
+    def guarded(model):
+        if model is Author:
+            raise AssertionError("excluded model must not be built")
+        return real_make_instance(model)
+
+    monkeypatch.setattr(models_module, "make_instance", guarded)
+    check = ModelsCheck()
+    findings = check.run(_exampleapp())
+    infos = [f for f in findings if f.severity == "INFO"]
+    assert [f.target for f in infos] == ["exampleapp.Author"]
+    assert "PYTEST_DJANGO_AUTOCHECK_MODELS_EXCLUDE" in infos[0].message
+    assert [f for f in findings if f.severity != "INFO"] == []
 
 
 def test_iter_models_excludes_third_party_apps() -> None:

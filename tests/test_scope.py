@@ -5,8 +5,18 @@ import site
 import types
 
 from django.apps import apps
+from django.test import override_settings
 
 from pytest_django_autocheck.checks.shared import scope
+
+
+def test_excluded_model_labels_defaults_to_empty_set() -> None:
+    assert scope.excluded_model_labels() == set()
+
+
+@override_settings(PYTEST_DJANGO_AUTOCHECK_MODELS_EXCLUDE=["Billing.Plan"])
+def test_excluded_model_labels_lowercases_labels() -> None:
+    assert scope.excluded_model_labels() == {"billing.plan"}
 
 
 def _stub_model(module: str, app_name: str) -> type:

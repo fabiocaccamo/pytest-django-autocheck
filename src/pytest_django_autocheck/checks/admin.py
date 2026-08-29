@@ -21,6 +21,11 @@ Admins registered for models defined inside a ``tests`` package (a top-level
 ``tests/`` or an app-level ``{app}/tests/``) are skipped: those are support
 models for the project's own test suite, not production models.
 
+For models listed in the ``PYTEST_DJANGO_AUTOCHECK_MODELS_EXCLUDE`` setting
+only the change view is skipped (with an ``INFO`` finding), because it is the
+only step that needs a generated instance; attribute validation and the
+changelist/add views still run.
+
 Requests are made as simulated HTTPS (``secure=True``) so a project with
 ``SECURE_SSL_REDIRECT`` enabled does not answer every GET with a 301 that
 would silently skip the views. Any remaining redirect that points back at the
@@ -41,6 +46,7 @@ from django.urls import NoReverseMatch, reverse
 from pytest_django_autocheck.checks.shared.builders import make_instance
 from pytest_django_autocheck.checks.shared.http import same_path_redirect
 from pytest_django_autocheck.checks.shared.scope import (
+    excluded_model_labels,
     inspected_labels,
     is_test_support_model,
 )
@@ -93,13 +99,16 @@ class AdminCheck(BaseCheck):
             ]
 
         findings: list[Finding] = []
+        excluded = excluded_model_labels()
         for model, admin_instance in site._registry.items():
             opts = model._meta
             if opts.app_label not in allowed:
                 continue
             if is_test_support_model(model):
                 continue
-            findings.extend(self._check_model(client, request, model, admin_instance))
+            findings.extend(
+                self._check_model(client, request, model, admin_instance, excluded)
+            )
         return findings
 
     @staticmethod
@@ -133,6 +142,7 @@ class AdminCheck(BaseCheck):
         request: HttpRequest,
         model: type[Model],
         admin_instance: ModelAdmin,
+        excluded: set[str],
     ) -> list[Finding]:
         opts = model._meta
         target = f"{opts.app_label}.{model.__name__}"
@@ -142,6 +152,18 @@ class AdminCheck(BaseCheck):
         findings.extend(self._check_config(request, admin_instance, target))
         findings.extend(self._check_view(client, "changelist", info, [], target))
         findings.extend(self._check_view(client, "add", info, [], target))
+
+        if opts.label_lower in excluded:
+            findings.append(
+                Finding(
+                    self.name,
+                    "INFO",
+                    target,
+                    "excluded by the PYTEST_DJANGO_AUTOCHECK_MODELS_EXCLUDE "
+                    "setting: skipping the change view (no instance is built).",
+                )
+            )
+            return findings
 
         try:
             # Nested savepoint: a failed INSERT (e.g. a column missing

@@ -17,6 +17,14 @@ Supported settings (the prefix is omitted in this list):
 - ``MIGRATIONS_PROBE_TIMEOUT`` (seconds, default ``300``): maximum time the
   dynamic migration probe subprocess is allowed to run before it is aborted
   and the dynamic step is skipped with a ``WARNING``.
+- ``MODELS_EXCLUDE`` (list of ``"app_label.ModelName"`` labels, default
+  ``[]``): models excluded from instance building. The ``models`` check skips
+  them entirely and the ``admin`` check skips their change view (attribute
+  validation, changelist and add views still run). This is the escape hatch
+  for models whose domain constraints can never be satisfied by generated
+  data (e.g. a ``clean()`` that requires specific related rows, or a CHECK
+  constraint between correlated fields). Matching is case-insensitive and
+  every exclusion is reported as ``INFO`` so it never disappears silently.
 - ``DEPLOY`` (bool, default ``False``): when ``True`` the ``system_checks``
   check also runs Django's deployment checks (``DEBUG``, ``SECRET_KEY``,
   SSL/HSTS, secure cookies, etc.) on top of the regular ones. Off by default
@@ -34,6 +42,7 @@ DEFAULTS: dict[str, Any] = {
     "CHECKS": None,
     "SKIP": None,
     "MIGRATIONS_PROBE_TIMEOUT": 300,
+    "MODELS_EXCLUDE": [],
     "DEPLOY": False,
 }
 

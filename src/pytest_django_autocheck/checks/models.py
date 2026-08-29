@@ -10,6 +10,10 @@ Models defined inside a ``tests`` package (a top-level ``tests/`` or an
 app-level ``{app}/tests/``) are skipped as well: they are support models for
 the project's own test suite, not production models.
 
+Models listed in the ``PYTEST_DJANGO_AUTOCHECK_MODELS_EXCLUDE`` setting are
+skipped with an ``INFO`` finding: it is the escape hatch for models whose
+domain constraints can never be satisfied by generated data.
+
 The generation is generic: it prefers the project's own ``factory_boy``
 factories when present and falls back to ``model_bakery``, which resolves
 required fields and foreign keys recursively, with no assumption about the
@@ -25,6 +29,7 @@ from django.db import transaction
 
 from pytest_django_autocheck.checks.shared.builders import make_instance
 from pytest_django_autocheck.checks.shared.scope import (
+    excluded_model_labels,
     inspected_labels,
     is_test_support_model,
 )
@@ -43,8 +48,20 @@ class ModelsCheck(BaseCheck):
 
     def run(self, app_configs: Sequence[AppConfig] | None) -> list[Finding]:
         findings: list[Finding] = []
+        excluded = excluded_model_labels()
         for model in self._iter_models(app_configs):
             target = f"{model._meta.app_label}.{model.__name__}"
+            if model._meta.label_lower in excluded:
+                findings.append(
+                    Finding(
+                        self.name,
+                        "INFO",
+                        target,
+                        "excluded by the PYTEST_DJANGO_AUTOCHECK_MODELS_EXCLUDE "
+                        "setting, skipping.",
+                    )
+                )
+                continue
             # Each DB-touching step runs in its own savepoint: on databases
             # like PostgreSQL a failed query aborts the whole transaction, so
             # without the savepoint one broken model would cascade "you can't

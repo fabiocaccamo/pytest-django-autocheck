@@ -22,6 +22,8 @@ from typing import TYPE_CHECKING
 
 from django.apps import apps
 
+from pytest_django_autocheck.settings import get_setting
+
 if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence
 
@@ -55,6 +57,11 @@ def external_prefixes() -> tuple[str, ...]:
 def is_within(real_path: str, parent: str) -> bool:
     """Return ``True`` when ``real_path`` is ``parent`` or nested under it."""
     return real_path == parent or real_path.startswith(parent + os.sep)
+
+
+def excluded_model_labels() -> set[str]:
+    """Return the lowercased labels from the ``MODELS_EXCLUDE`` setting."""
+    return {label.lower() for label in get_setting("MODELS_EXCLUDE")}
 
 
 def is_test_support_model(model: type[Model]) -> bool:

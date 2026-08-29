@@ -6,7 +6,7 @@ import pytest
 from django.apps import apps
 from django.contrib import admin
 from django.contrib.admin import site
-from django.test import Client
+from django.test import Client, override_settings
 
 from pytest_django_autocheck.checks import admin as admin_module
 from pytest_django_autocheck.checks.admin import AdminCheck
@@ -70,6 +70,24 @@ def test_run_skips_admins_for_test_support_models(monkeypatch) -> None:
     site.register(Author, BrokenAdmin)
     check = AdminCheck(site=site)
     assert check.run(None) == []
+
+
+@override_settings(PYTEST_DJANGO_AUTOCHECK_MODELS_EXCLUDE=["exampleapp.author"])
+def test_excluded_models_skip_only_the_change_view(monkeypatch) -> None:
+    real_make_instance = admin_module.make_instance
+
+    def guarded(model):
+        if model is Author:
+            raise AssertionError("excluded model must not be built")
+        return real_make_instance(model)
+
+    monkeypatch.setattr(admin_module, "make_instance", guarded)
+    check = AdminCheck()
+    findings = check.run(_exampleapp())
+    infos = [f for f in findings if f.severity == "INFO"]
+    assert [f.target for f in infos] == ["exampleapp.Author"]
+    assert "change view" in infos[0].message
+    assert [f for f in findings if f.severity != "INFO"] == []
 
 
 def test_run_warns_when_superuser_setup_fails(monkeypatch) -> None:
@@ -180,7 +198,9 @@ def test_change_view_instance_failure_is_warning(monkeypatch) -> None:
         raise ValueError("no instance")
 
     monkeypatch.setattr(admin_module, "make_instance", boom)
-    findings = check._check_model(client, request, Author, site._registry[Author])
+    findings = check._check_model(
+        client, request, Author, site._registry[Author], set()
+    )
     warnings = [f for f in findings if f.severity == "WARNING"]
     assert warnings
     assert "no instance" in warnings[0].message
@@ -205,7 +225,9 @@ def test_change_view_instance_failure_rolls_back_partial_writes(
         raise ValueError("boom after write")
 
     monkeypatch.setattr(admin_module, "make_instance", partial_write_then_boom)
-    findings = check._check_model(client, request, Author, site._registry[Author])
+    findings = check._check_model(
+        client, request, Author, site._registry[Author], set()
+    )
     assert [f for f in findings if f.severity == "WARNING"]
     assert Author.objects.filter(name="leaked").exists() is False
 
