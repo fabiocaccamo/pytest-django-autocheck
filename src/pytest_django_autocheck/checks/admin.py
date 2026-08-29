@@ -30,9 +30,11 @@ makes it checkable, so it wins over the exclusion.
 
 Requests are made as simulated HTTPS (``secure=True``) so a project with
 ``SECURE_SSL_REDIRECT`` enabled does not answer every GET with a 301 that
-would silently skip the views. Any remaining redirect that points back at the
-same path (only the scheme or host changes, e.g. a www redirect) is reported
-as a WARNING because it means the view was never exercised.
+would silently skip the views. Unlike the anonymous views check, here **any**
+redirect is reported as a WARNING: the client is logged in as a superuser, so
+the expected answer is the rendered page, and a redirect (SSL/www rewrites,
+but also a bounce to the login page when a custom user model or auth backend
+defeats ``force_login``) means the view was never exercised.
 """
 
 from __future__ import annotations
@@ -46,7 +48,6 @@ from django.test import Client, RequestFactory
 from django.urls import NoReverseMatch, reverse
 
 from pytest_django_autocheck.checks.shared.builders import make_instance
-from pytest_django_autocheck.checks.shared.http import same_path_redirect
 from pytest_django_autocheck.checks.shared.scope import (
     excluded_model_labels,
     inspected_labels,
@@ -267,15 +268,16 @@ class AdminCheck(BaseCheck):
                 )
             ]
 
-        location = same_path_redirect(response, url)
-        if location is not None:
+        if 300 <= response.status_code < 400:
+            location = response.headers.get("Location", "")
             return [
                 Finding(
                     self.name,
                     "WARNING",
                     target,
-                    f"admin {view} was redirected to {location} (same path): "
-                    "the view was never exercised.",
+                    f"admin {view} was redirected to {location!r}: the view "
+                    "was never exercised (is the autocheck superuser allowed "
+                    "into this admin?).",
                 )
             ]
 

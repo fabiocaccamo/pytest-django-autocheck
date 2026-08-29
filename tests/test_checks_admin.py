@@ -177,6 +177,23 @@ def test_check_view_warns_on_same_path_redirect() -> None:
     assert "never exercised" in findings[0].message
 
 
+def test_check_view_warns_on_login_redirect() -> None:
+    def get(url, **kwargs):
+        return types.SimpleNamespace(
+            status_code=302, headers={"Location": f"/admin/login/?next={url}"}
+        )
+
+    check = AdminCheck()
+    fake_client = types.SimpleNamespace(get=get)
+    findings = check._check_view(
+        fake_client, "changelist", ("exampleapp", "author"), [], "exampleapp.Author"
+    )
+    assert len(findings) == 1
+    assert findings[0].severity == "WARNING"
+    assert "/admin/login/" in findings[0].message
+    assert "never exercised" in findings[0].message
+
+
 def test_run_survives_ssl_redirect_settings(settings) -> None:
     """With SECURE_SSL_REDIRECT on, admin views must still be exercised."""
     settings.MIDDLEWARE = [
