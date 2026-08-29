@@ -7,4 +7,4 @@ __description__ = (
 __email__ = "fabio.caccamo@gmail.com"
 __license__ = "MIT"
 __title__ = "pytest-django-autocheck"
-__version__ = "0.2.0"
+__version__ = "0.3.0"
