@@ -157,11 +157,15 @@ def _build_item(session: pytest.Session, check: Check) -> pytest.Function:
         _run_check_item(check)
 
     autocheck.__name__ = f"autocheck_{check.name}"
-    return pytest.Function.from_parent(
+    item = pytest.Function.from_parent(
         session,
-        name=f"autocheck::{check.name}",
+        name=f"autocheck[{check.name}]",
         callobj=autocheck,
     )
+    # The marker makes the synthetic items selectable with -m autocheck (and
+    # excludable with -m "not autocheck").
+    item.add_marker("autocheck")
+    return item
 
 
 def _run_check_item(check: Check) -> None:

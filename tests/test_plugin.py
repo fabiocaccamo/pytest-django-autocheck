@@ -47,6 +47,14 @@ def test_autocheck_items_are_injected(pytestconfig) -> None:
     assert pytestconfig.option.autocheck is True
 
 
+def test_autocheck_items_carry_the_autocheck_marker(request) -> None:
+    items = [
+        item for item in request.session.items if item.name.startswith("autocheck[")
+    ]
+    assert items
+    assert all(item.get_closest_marker("autocheck") for item in items)
+
+
 def test_configure_registers_marker_and_warning_filter() -> None:
     lines: list[tuple[str, str]] = []
 
