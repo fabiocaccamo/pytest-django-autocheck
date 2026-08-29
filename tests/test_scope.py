@@ -2,10 +2,45 @@
 
 import os
 import site
+import types
 
 from django.apps import apps
 
 from pytest_django_autocheck.checks.shared import scope
+
+
+def _stub_model(module: str, app_name: str) -> type:
+    class Stub:
+        pass
+
+    Stub.__module__ = module
+    Stub._meta = types.SimpleNamespace(app_config=types.SimpleNamespace(name=app_name))
+    return Stub
+
+
+def test_is_test_support_model_app_level_tests_package() -> None:
+    model = _stub_model("core.tests.models", "core")
+    assert scope.is_test_support_model(model) is True
+
+
+def test_is_test_support_model_top_level_tests_package() -> None:
+    model = _stub_model("tests.models", "core")
+    assert scope.is_test_support_model(model) is True
+
+
+def test_is_test_support_model_false_for_regular_module() -> None:
+    model = _stub_model("core.models", "core")
+    assert scope.is_test_support_model(model) is False
+
+
+def test_is_test_support_model_false_for_app_installed_under_tests() -> None:
+    model = _stub_model("tests.exampleapp.models", "tests.exampleapp")
+    assert scope.is_test_support_model(model) is False
+
+
+def test_is_test_support_model_false_for_tests_prefix_only() -> None:
+    model = _stub_model("core.testsuite.models", "core")
+    assert scope.is_test_support_model(model) is False
 
 
 def test_is_project_app_true_for_local_app() -> None:

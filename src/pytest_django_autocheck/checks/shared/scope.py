@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import functools
 import os
+import re
 import site
 import sysconfig
 from typing import TYPE_CHECKING
@@ -25,6 +26,9 @@ if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence
 
     from django.apps.config import AppConfig
+    from django.db.models import Model
+
+_TESTS_MODULE_RE = re.compile(r"(^|\.)tests(\.|$)")
 
 
 @functools.lru_cache(maxsize=1)
@@ -51,6 +55,22 @@ def external_prefixes() -> tuple[str, ...]:
 def is_within(real_path: str, parent: str) -> bool:
     """Return ``True`` when ``real_path`` is ``parent`` or nested under it."""
     return real_path == parent or real_path.startswith(parent + os.sep)
+
+
+def is_test_support_model(model: type[Model]) -> bool:
+    """Return ``True`` when ``model`` is defined in a ``tests`` module.
+
+    Models declared inside a ``tests`` package (a top-level ``tests/`` or an
+    app-level ``{app}/tests/``) only support the project's own test suite, so
+    the checks skip them. The app's own dotted path is stripped before
+    matching: an app deliberately installed from within a tests package (such
+    as this plugin's own fixture app) is still inspected.
+    """
+    module = model.__module__
+    app_name = model._meta.app_config.name
+    if module == app_name or module.startswith(app_name + "."):
+        module = module[len(app_name) + 1 :]
+    return _TESTS_MODULE_RE.search(module) is not None
 
 
 def is_project_app(app_config: AppConfig) -> bool:

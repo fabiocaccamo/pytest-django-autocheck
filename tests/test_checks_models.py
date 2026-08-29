@@ -38,6 +38,12 @@ def test_proxy_and_unmanaged_models_are_skipped() -> None:
     assert UnmanagedThing.__name__ not in inspected
 
 
+def test_test_support_models_are_skipped(monkeypatch) -> None:
+    monkeypatch.setattr(Author, "__module__", "tests.exampleapp.tests.models")
+    inspected = {model.__name__ for model in ModelsCheck._iter_models(_exampleapp())}
+    assert "Author" not in inspected
+
+
 def test_iter_models_excludes_third_party_apps() -> None:
     labels = {model._meta.app_label for model in ModelsCheck._iter_models(None)}
     assert "exampleapp" in labels

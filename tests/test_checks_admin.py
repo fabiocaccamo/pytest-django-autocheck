@@ -58,6 +58,20 @@ def test_run_skips_admins_for_third_party_models() -> None:
     assert check.run(None) == []
 
 
+def test_run_skips_admins_for_test_support_models(monkeypatch) -> None:
+    from django.contrib.admin import AdminSite
+
+    class BrokenAdmin(admin.ModelAdmin):
+        def get_list_display(self, request):
+            raise AssertionError("test-support admin must not be inspected")
+
+    monkeypatch.setattr(Author, "__module__", "tests.exampleapp.tests.models")
+    site = AdminSite()
+    site.register(Author, BrokenAdmin)
+    check = AdminCheck(site=site)
+    assert check.run(None) == []
+
+
 def test_run_warns_when_superuser_setup_fails(monkeypatch) -> None:
     check = AdminCheck()
 

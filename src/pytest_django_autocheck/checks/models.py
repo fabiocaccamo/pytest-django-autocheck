@@ -6,6 +6,9 @@ generated (and persisted) through the shared generator, then ``str()`` and
 original exception, so a single broken model does not hide the others.
 Third-party and ``django.contrib`` models are skipped: they are not the
 project's responsibility and random data could trip their own constraints.
+Models defined inside a ``tests`` package (a top-level ``tests/`` or an
+app-level ``{app}/tests/``) are skipped as well: they are support models for
+the project's own test suite, not production models.
 
 The generation is generic: it prefers the project's own ``factory_boy``
 factories when present and falls back to ``model_bakery``, which resolves
@@ -21,7 +24,10 @@ from django.apps import apps
 from django.db import transaction
 
 from pytest_django_autocheck.checks.shared.builders import make_instance
-from pytest_django_autocheck.checks.shared.scope import inspected_labels
+from pytest_django_autocheck.checks.shared.scope import (
+    inspected_labels,
+    is_test_support_model,
+)
 from pytest_django_autocheck.registry import BaseCheck, Finding
 
 if TYPE_CHECKING:
@@ -96,5 +102,7 @@ class ModelsCheck(BaseCheck):
             if opts.proxy or not opts.managed or opts.swapped:
                 continue
             if opts.app_label not in allowed:
+                continue
+            if is_test_support_model(model):
                 continue
             yield model

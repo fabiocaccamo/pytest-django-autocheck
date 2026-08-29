@@ -90,12 +90,12 @@ Valid check names for both flags: `admin`, `forms`, `imports`,
 
 | Check | Description |
 |-------|-------------|
-| `admin` | Every admin registered for a *project* model validates its configuration and renders its changelist and changeform without 500/404. Admins for third-party models are skipped. |
+| `admin` | Every admin registered for a *project* model validates its configuration and renders its changelist and changeform without 500/404. Admins for third-party models and for models defined inside a `tests` package are skipped. |
 | `forms` | Every `ModelForm` defined in a project app's `forms` module instantiates without raising. |
 | `imports` | Every module of every project app imports without `ImportError` or circular import (third-party pip apps are skipped). |
 | `management_commands` | Every management command defined by a project app loads its class and builds its argument parser without raising. |
 | `migrations` | Detects model changes not captured by a migration, statically inspects every *project* migration for irreversible operations and silent noop-reverse migrations, then dynamically verifies the whole graph by applying it forward, reversing to zero, and re-applying forward on a throwaway database. Third-party and `django.contrib` migrations are skipped: a dependency's irreversible data migration won't fail your build. |
-| `models` | Every *project* model is instantiable, savable, and stringifiable via both `str()` and `repr()`. Third-party and `django.contrib` models are skipped. |
+| `models` | Every *project* model is instantiable, savable, and stringifiable via both `str()` and `repr()`. Third-party and `django.contrib` models are skipped, as are test-support models defined inside a `tests` package (a top-level `tests/` or an app-level `{app}/tests/`). |
 | `serializers` | Every Django REST Framework serializer defined in a project app (`<app>.serializers` or `<app>.api.serializers`) binds its fields without raising. Skipped entirely when `djangorestframework` isn't installed. |
 | `system_checks` | Runs Django's own system check framework (`django.core.checks`) and reports every error, warning and info message it raises. |
 | `templates` | Every template under the project's own template directories compiles without a `TemplateSyntaxError`. |

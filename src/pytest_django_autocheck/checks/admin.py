@@ -17,6 +17,9 @@ The check is generic: the superuser is built with the project's own user model
 through the shared generator, admin URLs are resolved by reverse(), and no
 assumption is made about the project under inspection. The admin site is
 injectable for testability and defaults to ``django.contrib.admin.site``.
+Admins registered for models defined inside a ``tests`` package (a top-level
+``tests/`` or an app-level ``{app}/tests/``) are skipped: those are support
+models for the project's own test suite, not production models.
 
 Requests are made as simulated HTTPS (``secure=True``) so a project with
 ``SECURE_SSL_REDIRECT`` enabled does not answer every GET with a 301 that
@@ -37,7 +40,10 @@ from django.urls import NoReverseMatch, reverse
 
 from pytest_django_autocheck.checks.shared.builders import make_instance
 from pytest_django_autocheck.checks.shared.http import same_path_redirect
-from pytest_django_autocheck.checks.shared.scope import inspected_labels
+from pytest_django_autocheck.checks.shared.scope import (
+    inspected_labels,
+    is_test_support_model,
+)
 from pytest_django_autocheck.registry import BaseCheck, Finding
 
 if TYPE_CHECKING:
@@ -90,6 +96,8 @@ class AdminCheck(BaseCheck):
         for model, admin_instance in site._registry.items():
             opts = model._meta
             if opts.app_label not in allowed:
+                continue
+            if is_test_support_model(model):
                 continue
             findings.extend(self._check_model(client, request, model, admin_instance))
         return findings
