@@ -114,6 +114,7 @@ you need.
 | `PYTEST_DJANGO_AUTOCHECK_SKIP` | `None` | List of check names to exclude, e.g. `["templates", "serializers"]`. Applied after `CHECKS`/`--autocheck-only`. `--autocheck-skip`, when given, takes precedence. |
 | `PYTEST_DJANGO_AUTOCHECK_MIGRATIONS_PROBE_TIMEOUT` | `300` | Max seconds the dynamic migration probe subprocess may run before it's aborted; on timeout the dynamic step is skipped with a `WARNING` and the run doesn't fail. The probe self-aborts at this deadline and destroys its throwaway database. |
 | `PYTEST_DJANGO_AUTOCHECK_MODELS_EXCLUDE` | `[]` | List of `"app_label.ModelName"` labels (case-insensitive) excluded from instance building: the `models` check skips them entirely and the `admin` check skips their change view (attribute validation, changelist and add views still run). Escape hatch for models whose domain constraints can never be satisfied by generated data (e.g. a `clean()` that requires specific related rows, or a CHECK constraint between correlated fields). Every exclusion is reported as `INFO`, so it never disappears silently. |
+| `PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES` | `{}` | Dict mapping `"app_label.ModelName"` labels (case-insensitive) to the dotted path of a zero-argument callable returning a *saved* instance, e.g. `{"billing.Plan": "billing.testing.make_plan"}`. The callable replaces the generic generator for that model in the `models` and `admin` checks. A model listed here wins over `MODELS_EXCLUDE`: providing a factory means the model can be checked after all, so prefer this over excluding it. |
 | `PYTEST_DJANGO_AUTOCHECK_DEPLOY` | `False` | When `True`, `system_checks` also runs Django's deployment checks (`DEBUG`, `SECRET_KEY`, SSL/HSTS, secure cookies). Off by default since those fail on dev/test settings; enable for a pre-production audit. |
 
 The dynamic migration verification runs in a short-lived subprocess, isolated
@@ -131,8 +132,10 @@ encode domain rules, which avoids false positives. Falls back to
 `factory_boy` is optional; discovery is a no-op if it's not installed.
 
 When neither a factory nor generated data can satisfy a model's domain
-constraints, list it in `PYTEST_DJANGO_AUTOCHECK_MODELS_EXCLUDE` (see
-[Settings](#settings)) to exclude it from instance building.
+constraints, point `PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES` at your own
+callable to keep the model checked, or, as a last resort, list it in
+`PYTEST_DJANGO_AUTOCHECK_MODELS_EXCLUDE` (see [Settings](#settings)) to
+exclude it from instance building.
 
 The `serializers` check requires
 [Django REST Framework](https://www.django-rest-framework.org/) and is skipped

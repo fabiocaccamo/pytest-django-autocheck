@@ -64,6 +64,13 @@ def excluded_model_labels() -> set[str]:
     return {label.lower() for label in get_setting("MODELS_EXCLUDE")}
 
 
+def model_factory_paths() -> dict[str, str]:
+    """Return lowercased label -> dotted path from ``MODELS_FACTORIES``."""
+    return {
+        label.lower(): path for label, path in get_setting("MODELS_FACTORIES").items()
+    }
+
+
 def is_test_support_model(model: type[Model]) -> bool:
     """Return ``True`` when ``model`` is defined in a ``tests`` module.
 

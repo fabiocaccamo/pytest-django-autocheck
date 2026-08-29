@@ -19,6 +19,17 @@ def test_excluded_model_labels_lowercases_labels() -> None:
     assert scope.excluded_model_labels() == {"billing.plan"}
 
 
+def test_model_factory_paths_defaults_to_empty_dict() -> None:
+    assert scope.model_factory_paths() == {}
+
+
+@override_settings(
+    PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES={"Billing.Plan": "billing.tests.plan"}
+)
+def test_model_factory_paths_lowercases_labels() -> None:
+    assert scope.model_factory_paths() == {"billing.plan": "billing.tests.plan"}
+
+
 def _stub_model(module: str, app_name: str) -> type:
     class Stub:
         pass

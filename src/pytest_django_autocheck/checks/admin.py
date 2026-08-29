@@ -24,7 +24,9 @@ models for the project's own test suite, not production models.
 For models listed in the ``PYTEST_DJANGO_AUTOCHECK_MODELS_EXCLUDE`` setting
 only the change view is skipped (with an ``INFO`` finding), because it is the
 only step that needs a generated instance; attribute validation and the
-changelist/add views still run.
+changelist/add views still run. A model with a callable configured in
+``PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES`` is never excluded: the factory
+makes it checkable, so it wins over the exclusion.
 
 Requests are made as simulated HTTPS (``secure=True``) so a project with
 ``SECURE_SSL_REDIRECT`` enabled does not answer every GET with a 301 that
@@ -49,6 +51,7 @@ from pytest_django_autocheck.checks.shared.scope import (
     excluded_model_labels,
     inspected_labels,
     is_test_support_model,
+    model_factory_paths,
 )
 from pytest_django_autocheck.registry import BaseCheck, Finding
 
@@ -99,7 +102,9 @@ class AdminCheck(BaseCheck):
             ]
 
         findings: list[Finding] = []
-        excluded = excluded_model_labels()
+        # A configured factory wins over the exclusion: it makes the model
+        # checkable after all.
+        excluded = excluded_model_labels() - set(model_factory_paths())
         for model, admin_instance in site._registry.items():
             opts = model._meta
             if opts.app_label not in allowed:

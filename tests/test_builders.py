@@ -3,6 +3,7 @@
 import sys
 
 import pytest
+from django.test import override_settings
 
 from pytest_django_autocheck.checks.shared import builders
 from tests.exampleapp.factories import (
@@ -11,6 +12,18 @@ from tests.exampleapp.factories import (
     BookFactory,
 )
 from tests.exampleapp.models import Author, Book
+
+
+def make_saved_author() -> Author:
+    return Author.objects.create(name="from configured factory")
+
+
+def make_unsaved_author() -> Author:
+    return Author(name="unsaved")
+
+
+def make_wrong_type() -> object:
+    return object()
 
 
 @pytest.fixture(autouse=True)
@@ -42,6 +55,39 @@ def test_make_instance_uses_project_factory() -> None:
     assert isinstance(instance, Author)
     assert instance.pk is not None
     assert instance.name.startswith("Author ")
+
+
+@pytest.mark.django_db
+@override_settings(
+    PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES={
+        "ExampleApp.Author": "tests.test_builders.make_saved_author",
+    }
+)
+def test_make_instance_prefers_configured_factory() -> None:
+    instance = builders.make_instance(Author)
+    assert isinstance(instance, Author)
+    assert instance.pk is not None
+    assert instance.name == "from configured factory"
+
+
+@override_settings(
+    PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES={
+        "exampleapp.Author": "tests.test_builders.make_unsaved_author",
+    }
+)
+def test_configured_factory_returning_unsaved_instance_raises() -> None:
+    with pytest.raises(ValueError, match="must return a saved Author instance"):
+        builders.make_instance(Author)
+
+
+@override_settings(
+    PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES={
+        "exampleapp.Author": "tests.test_builders.make_wrong_type",
+    }
+)
+def test_configured_factory_returning_wrong_type_raises() -> None:
+    with pytest.raises(ValueError, match="must return a saved Author instance"):
+        builders.make_instance(Author)
 
 
 @pytest.mark.django_db

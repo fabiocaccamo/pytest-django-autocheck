@@ -11,6 +11,10 @@ from tests.exampleapp.models import Author, AuthorProxy, UnmanagedThing
 pytestmark = pytest.mark.django_db
 
 
+def make_saved_author() -> Author:
+    return Author.objects.create(name="from configured factory")
+
+
 def _exampleapp():
     return [apps.get_app_config("exampleapp")]
 
@@ -61,6 +65,19 @@ def test_excluded_models_are_reported_as_info_and_never_built(monkeypatch) -> No
     assert [f.target for f in infos] == ["exampleapp.Author"]
     assert "PYTEST_DJANGO_AUTOCHECK_MODELS_EXCLUDE" in infos[0].message
     assert [f for f in findings if f.severity != "INFO"] == []
+
+
+@override_settings(
+    PYTEST_DJANGO_AUTOCHECK_MODELS_EXCLUDE=["exampleapp.Author"],
+    PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES={
+        "exampleapp.Author": "tests.test_checks_models.make_saved_author",
+    },
+)
+def test_configured_factory_wins_over_exclusion() -> None:
+    check = ModelsCheck()
+    findings = check.run(_exampleapp())
+    assert findings == []
+    assert Author.objects.filter(name="from configured factory").exists()
 
 
 def test_iter_models_excludes_third_party_apps() -> None:

@@ -25,6 +25,13 @@ Supported settings (the prefix is omitted in this list):
   data (e.g. a ``clean()`` that requires specific related rows, or a CHECK
   constraint between correlated fields). Matching is case-insensitive and
   every exclusion is reported as ``INFO`` so it never disappears silently.
+- ``MODELS_FACTORIES`` (dict mapping ``"app_label.ModelName"`` labels to the
+  dotted path of a callable, default ``{}``): the callable is imported and
+  called with no arguments instead of the generic generator when the
+  ``models`` and ``admin`` checks need an instance of that model, and must
+  return a *saved* instance. Matching is case-insensitive. A model listed
+  here wins over ``MODELS_EXCLUDE``: providing a factory means the model can
+  be checked after all, so prefer this over excluding it.
 - ``DEPLOY`` (bool, default ``False``): when ``True`` the ``system_checks``
   check also runs Django's deployment checks (``DEBUG``, ``SECRET_KEY``,
   SSL/HSTS, secure cookies, etc.) on top of the regular ones. Off by default
@@ -43,6 +50,7 @@ DEFAULTS: dict[str, Any] = {
     "SKIP": None,
     "MIGRATIONS_PROBE_TIMEOUT": 300,
     "MODELS_EXCLUDE": [],
+    "MODELS_FACTORIES": {},
     "DEPLOY": False,
 }
 

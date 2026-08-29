@@ -12,7 +12,9 @@ the project's own test suite, not production models.
 
 Models listed in the ``PYTEST_DJANGO_AUTOCHECK_MODELS_EXCLUDE`` setting are
 skipped with an ``INFO`` finding: it is the escape hatch for models whose
-domain constraints can never be satisfied by generated data.
+domain constraints can never be satisfied by generated data. A model with a
+callable configured in ``PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES`` is never
+excluded: the factory makes it checkable, so it wins over the exclusion.
 
 The generation is generic: it prefers the project's own ``factory_boy``
 factories when present and falls back to ``model_bakery``, which resolves
@@ -32,6 +34,7 @@ from pytest_django_autocheck.checks.shared.scope import (
     excluded_model_labels,
     inspected_labels,
     is_test_support_model,
+    model_factory_paths,
 )
 from pytest_django_autocheck.registry import BaseCheck, Finding
 
@@ -48,7 +51,9 @@ class ModelsCheck(BaseCheck):
 
     def run(self, app_configs: Sequence[AppConfig] | None) -> list[Finding]:
         findings: list[Finding] = []
-        excluded = excluded_model_labels()
+        # A configured factory wins over the exclusion: it makes the model
+        # checkable after all.
+        excluded = excluded_model_labels() - set(model_factory_paths())
         for model in self._iter_models(app_configs):
             target = f"{model._meta.app_label}.{model.__name__}"
             if model._meta.label_lower in excluded:

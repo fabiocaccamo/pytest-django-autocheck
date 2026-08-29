@@ -21,9 +21,14 @@ def test_prefix_and_defaults_contract() -> None:
         "SKIP",
         "MIGRATIONS_PROBE_TIMEOUT",
         "MODELS_EXCLUDE",
+        "MODELS_FACTORIES",
         "DEPLOY",
     }
 
 
 def test_models_exclude_defaults_to_empty_list() -> None:
     assert conf.get_setting("MODELS_EXCLUDE") == []
+
+
+def test_models_factories_defaults_to_empty_dict() -> None:
+    assert conf.get_setting("MODELS_FACTORIES") == {}

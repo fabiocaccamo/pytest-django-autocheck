@@ -5,11 +5,15 @@ to obtain a valid, saved instance for any model.
 
 Generation strategy, in order of priority:
 
-1. if the project ships ``factory_boy`` factories (``<app>.factories`` or
+1. if the ``PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES`` setting maps the model
+   to a dotted path, import and call that callable: it is the project's
+   explicit recipe for models whose domain rules the generic strategies
+   cannot satisfy, and it must return a saved instance;
+2. if the project ships ``factory_boy`` factories (``<app>.factories`` or
    ``<app>.tests.factories``), use the matching factory: it already encodes the
    project's domain rules, so it avoids the false positives that random data
    would trigger on ``clean()``/validators/constraints;
-2. otherwise fall back to ``model_bakery.baker.make()``, which resolves
+3. otherwise fall back to ``model_bakery.baker.make()``, which resolves
    required fields and foreign keys recursively.
 
 The discovery stays fully generic: it relies on ``INSTALLED_APPS`` and standard
@@ -24,6 +28,9 @@ from functools import lru_cache
 from typing import TYPE_CHECKING
 
 from django.apps import apps
+from django.utils.module_loading import import_string
+
+from pytest_django_autocheck.checks.shared.scope import model_factory_paths
 
 if TYPE_CHECKING:
     from types import ModuleType
@@ -34,10 +41,15 @@ if TYPE_CHECKING:
 def make_instance(model: type[Model]) -> Model:
     """Create and persist a valid instance of ``model``.
 
-    Uses a project factory when one is found, otherwise ``model_bakery``.
+    Uses the callable configured in ``MODELS_FACTORIES`` when one exists,
+    then a discovered project factory, otherwise ``model_bakery``.
     Raises whatever exception generation triggers; callers are expected to
     wrap it into a :class:`~pytest_django_autocheck.registry.Finding`.
     """
+    factory_path = model_factory_paths().get(model._meta.label_lower)
+    if factory_path is not None:
+        return _call_configured_factory(model, factory_path)
+
     factory_class = _factory_for(model)
     if factory_class is not None:
         return factory_class.create()
@@ -45,6 +57,17 @@ def make_instance(model: type[Model]) -> Model:
     from model_bakery import baker
 
     return baker.make(model)
+
+
+def _call_configured_factory(model: type[Model], path: str) -> Model:
+    instance = import_string(path)()
+    if not isinstance(instance, model) or instance.pk is None:
+        raise ValueError(
+            "the callable configured in "
+            f"PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES for {model._meta.label} "
+            f"({path}) must return a saved {model.__name__} instance."
+        )
+    return instance
 
 
 def _factory_for(model: type[Model]) -> type | None:
