@@ -55,6 +55,25 @@ def test_autocheck_items_carry_the_autocheck_marker(request) -> None:
     assert all(item.get_closest_marker("autocheck") for item in items)
 
 
+def test_make_callobj_requests_db_only_when_needed() -> None:
+    import inspect
+
+    class NeedsDb:
+        name = "needs"
+        requires_db = True
+
+    class NoDb:
+        name = "nodb"
+        requires_db = False
+
+    class Legacy:
+        name = "legacy"  # no requires_db attribute: defaults to True
+
+    assert "db" in inspect.signature(plugin._make_callobj(NeedsDb())).parameters
+    assert "db" in inspect.signature(plugin._make_callobj(Legacy())).parameters
+    assert not inspect.signature(plugin._make_callobj(NoDb())).parameters
+
+
 def test_configure_registers_marker_and_warning_filter() -> None:
     lines: list[tuple[str, str]] = []
 

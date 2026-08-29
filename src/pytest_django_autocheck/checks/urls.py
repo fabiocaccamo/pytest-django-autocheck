@@ -31,6 +31,7 @@ if TYPE_CHECKING:
 class UrlsCheck(BaseCheck):
     name = "urls"
     severity = "ERROR"
+    requires_db = False
 
     def run(self, app_configs: Sequence[AppConfig] | None) -> list[Finding]:
         return self._walk(get_resolver())

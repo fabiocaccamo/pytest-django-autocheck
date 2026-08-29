@@ -153,19 +153,35 @@ def pytest_collection_modifyitems(
 
 
 def _build_item(session: pytest.Session, check: Check) -> pytest.Function:
-    def autocheck(db) -> None:
-        _run_check_item(check)
-
-    autocheck.__name__ = f"autocheck_{check.name}"
     item = pytest.Function.from_parent(
         session,
         name=f"autocheck[{check.name}]",
-        callobj=autocheck,
+        callobj=_make_callobj(check),
     )
     # The marker makes the synthetic items selectable with -m autocheck (and
     # excludable with -m "not autocheck").
     item.add_marker("autocheck")
     return item
+
+
+def _make_callobj(check: Check):
+    """Build the item body, requesting the db fixture only when needed.
+
+    Checks that never touch the database declare ``requires_db = False``, so
+    running only those never creates the test database.
+    """
+    if getattr(check, "requires_db", True):
+
+        def autocheck(db) -> None:
+            _run_check_item(check)
+
+    else:
+
+        def autocheck() -> None:  # type: ignore[misc]
+            _run_check_item(check)
+
+    autocheck.__name__ = f"autocheck_{check.name}"
+    return autocheck
 
 
 def _run_check_item(check: Check) -> None:

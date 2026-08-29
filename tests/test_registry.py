@@ -99,6 +99,23 @@ def test_base_check_run_is_abstract() -> None:
         BaseCheck().run(None)
 
 
+def test_requires_db_defaults_and_overrides() -> None:
+    from pytest_django_autocheck.checks import (
+        ImportsCheck,
+        MigrationsCheck,
+        ModelsCheck,
+        TemplatesCheck,
+        UrlsCheck,
+    )
+
+    assert BaseCheck.requires_db is True
+    assert ModelsCheck.requires_db is True
+    assert ImportsCheck.requires_db is False
+    assert MigrationsCheck.requires_db is False
+    assert TemplatesCheck.requires_db is False
+    assert UrlsCheck.requires_db is False
+
+
 def test_registry_preserves_registration_order() -> None:
     local_registry = CheckRegistry()
 

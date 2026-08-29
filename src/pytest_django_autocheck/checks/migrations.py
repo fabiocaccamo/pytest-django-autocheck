@@ -63,6 +63,9 @@ if TYPE_CHECKING:
 class MigrationsCheck(BaseCheck):
     name = "migrations"
     severity = "ERROR"
+    # The static inspection never queries and the dynamic probe owns its own
+    # throwaway database in a subprocess: the suite's test database is unused.
+    requires_db = False
 
     def run(self, app_configs: Sequence[AppConfig] | None) -> list[Finding]:
         loader = MigrationLoader(None, ignore_no_migrations=True)

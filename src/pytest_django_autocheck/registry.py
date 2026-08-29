@@ -39,7 +39,12 @@ class Finding:
 
 @runtime_checkable
 class Check(Protocol):
-    """Structural interface every check must satisfy."""
+    """Structural interface every check must satisfy.
+
+    Checks may also expose a ``requires_db`` boolean (default ``True`` when
+    absent): when ``False`` the pytest item does not request the database
+    fixture, so running only such checks never creates the test database.
+    """
 
     name: str
     severity: Severity
@@ -51,10 +56,13 @@ class BaseCheck:
     """Convenience base class for built-in checks.
 
     Subclasses must set ``name`` and ``severity`` and implement ``run``.
+    ``requires_db`` defaults to ``True``; checks that never touch the
+    database override it so their pytest item skips the database fixture.
     """
 
     name: str = ""
     severity: Severity = "ERROR"
+    requires_db: bool = True
 
     def run(self, app_configs: Sequence[AppConfig] | None) -> list[Finding]:
         raise NotImplementedError

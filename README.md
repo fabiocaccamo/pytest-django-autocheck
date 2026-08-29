@@ -157,6 +157,11 @@ Registered checks run like the built-in ones: they get their own pytest item,
 their name works with `--autocheck-only`/`--autocheck-skip` and the `CHECKS`/
 `SKIP` settings, and their `ERROR` findings fail the run.
 
+A check that never touches the database can declare `requires_db = False`:
+its pytest item then skips the database fixture, and running only such checks
+(like the built-in `imports`, `migrations`, `templates` and `urls`) never
+creates the test database.
+
 ## Testing
 
 ```bash

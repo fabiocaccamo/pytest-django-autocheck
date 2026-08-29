@@ -45,6 +45,7 @@ _SKIP_DIRS = {"__pycache__", "migrations", "node_modules"}
 class ImportsCheck(BaseCheck):
     name = "imports"
     severity = "ERROR"
+    requires_db = False
 
     def run(self, app_configs: Sequence[AppConfig] | None) -> list[Finding]:
         findings: list[Finding] = []
