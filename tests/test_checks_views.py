@@ -255,6 +255,14 @@ def test_redirect_to_a_different_path_is_ignored(monkeypatch) -> None:
     assert check._check_view(client, "any", set()) == []
 
 
+def test_same_path_redirect_with_query_string_is_ignored(monkeypatch) -> None:
+    # A query string means the view itself decided to redirect: it ran.
+    monkeypatch.setattr(views_module, "reverse", lambda name: "/any/")
+    check = ViewsCheck()
+    client = _FakeClient(_FakeResponse(302, location="/any/?page=1"))
+    assert check._check_view(client, "any", set()) == []
+
+
 def test_run_survives_ssl_redirect_settings(settings) -> None:
     """With SECURE_SSL_REDIRECT on, views must still be exercised (over https)."""
     settings.MIDDLEWARE = [
