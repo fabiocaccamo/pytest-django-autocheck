@@ -4,7 +4,9 @@ import os
 import site
 import types
 
+import pytest
 from django.apps import apps
+from django.core.exceptions import ImproperlyConfigured
 from django.test import override_settings
 
 from pytest_django_autocheck.checks.shared import scope
@@ -14,9 +16,21 @@ def test_excluded_model_labels_defaults_to_empty_set() -> None:
     assert scope.excluded_model_labels() == set()
 
 
-@override_settings(PYTEST_DJANGO_AUTOCHECK_MODELS_EXCLUDE=["Billing.Plan"])
+@override_settings(PYTEST_DJANGO_AUTOCHECK_MODELS_EXCLUDE=["ExampleApp.Author"])
 def test_excluded_model_labels_lowercases_labels() -> None:
-    assert scope.excluded_model_labels() == {"billing.plan"}
+    assert scope.excluded_model_labels() == {"exampleapp.author"}
+
+
+@override_settings(PYTEST_DJANGO_AUTOCHECK_MODELS_EXCLUDE="exampleapp.Author")
+def test_excluded_model_labels_rejects_a_plain_string() -> None:
+    with pytest.raises(ImproperlyConfigured, match="must be a list"):
+        scope.excluded_model_labels()
+
+
+@override_settings(PYTEST_DJANGO_AUTOCHECK_MODELS_EXCLUDE=["exampleapp.Nope"])
+def test_excluded_model_labels_rejects_unknown_labels() -> None:
+    with pytest.raises(ImproperlyConfigured, match="exampleapp.nope"):
+        scope.excluded_model_labels()
 
 
 def test_model_factory_paths_defaults_to_empty_dict() -> None:
@@ -24,10 +38,24 @@ def test_model_factory_paths_defaults_to_empty_dict() -> None:
 
 
 @override_settings(
-    PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES={"Billing.Plan": "billing.tests.plan"}
+    PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES={"ExampleApp.Author": "x.make_author"}
 )
 def test_model_factory_paths_lowercases_labels() -> None:
-    assert scope.model_factory_paths() == {"billing.plan": "billing.tests.plan"}
+    assert scope.model_factory_paths() == {"exampleapp.author": "x.make_author"}
+
+
+@override_settings(PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES=["exampleapp.Author"])
+def test_model_factory_paths_rejects_non_dicts() -> None:
+    with pytest.raises(ImproperlyConfigured, match="must be a dict"):
+        scope.model_factory_paths()
+
+
+@override_settings(
+    PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES={"biling.Plan": "x.make_plan"}
+)
+def test_model_factory_paths_rejects_unknown_labels() -> None:
+    with pytest.raises(ImproperlyConfigured, match="biling.plan"):
+        scope.model_factory_paths()
 
 
 def _stub_model(module: str, app_name: str) -> type:

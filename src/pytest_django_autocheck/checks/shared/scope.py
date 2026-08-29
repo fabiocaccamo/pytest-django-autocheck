@@ -21,6 +21,7 @@ import sysconfig
 from typing import TYPE_CHECKING
 
 from django.apps import apps
+from django.core.exceptions import ImproperlyConfigured
 
 from pytest_django_autocheck.settings import get_setting
 
@@ -61,14 +62,43 @@ def is_within(real_path: str, parent: str) -> bool:
 
 def excluded_model_labels() -> set[str]:
     """Return the lowercased labels from the ``MODELS_EXCLUDE`` setting."""
-    return {label.lower() for label in get_setting("MODELS_EXCLUDE")}
+    value = get_setting("MODELS_EXCLUDE")
+    if isinstance(value, str) or not isinstance(value, (list, tuple, set)):
+        raise ImproperlyConfigured(
+            "PYTEST_DJANGO_AUTOCHECK_MODELS_EXCLUDE must be a list of "
+            f"'app_label.ModelName' labels, got {value!r}."
+        )
+    labels = {label.lower() for label in value}
+    _validate_model_labels(labels, "PYTEST_DJANGO_AUTOCHECK_MODELS_EXCLUDE")
+    return labels
 
 
 def model_factory_paths() -> dict[str, str]:
     """Return lowercased label -> dotted path from ``MODELS_FACTORIES``."""
-    return {
-        label.lower(): path for label, path in get_setting("MODELS_FACTORIES").items()
-    }
+    value = get_setting("MODELS_FACTORIES")
+    if not isinstance(value, dict):
+        raise ImproperlyConfigured(
+            "PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES must be a dict mapping "
+            f"'app_label.ModelName' labels to dotted paths, got {value!r}."
+        )
+    paths = {label.lower(): path for label, path in value.items()}
+    _validate_model_labels(set(paths), "PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES")
+    return paths
+
+
+def _validate_model_labels(labels: set[str], setting_name: str) -> None:
+    """Fail loudly on labels that match no installed model.
+
+    A silently ignored typo would exclude nothing (or configure a factory for
+    nothing) while the developer believes it did.
+    """
+    installed = {model._meta.label_lower for model in apps.get_models()}
+    unknown = sorted(labels - installed)
+    if unknown:
+        raise ImproperlyConfigured(
+            f"{setting_name} references unknown model label(s): "
+            f"{', '.join(unknown)}."
+        )
 
 
 def is_test_support_model(model: type[Model]) -> bool:
