@@ -10,15 +10,18 @@ pytestmark = pytest.mark.django_db
 
 
 class _FakeResponse:
-    def __init__(self, status_code: int) -> None:
+    def __init__(self, status_code: int, location: str | None = None) -> None:
         self.status_code = status_code
+        self.headers = {} if location is None else {"Location": location}
 
 
 class _FakeClient:
     def __init__(self, response: _FakeResponse | None = None) -> None:
         self._response = response
+        self.secure: bool | None = None
 
-    def get(self, url):
+    def get(self, url, secure=False):
+        self.secure = secure
         if self._response is None:
             raise ValueError("view exploded")
         return self._response
@@ -224,3 +227,54 @@ def test_non_server_errors_are_ignored(monkeypatch, status_code) -> None:
     check = ViewsCheck()
     client = _FakeClient(_FakeResponse(status_code))
     assert check._check_view(client, "any", set()) == []
+
+
+def test_requests_are_made_over_https(monkeypatch) -> None:
+    monkeypatch.setattr(views_module, "reverse", lambda name: "/any/")
+    check = ViewsCheck()
+    client = _FakeClient(_FakeResponse(200))
+    check._check_view(client, "any", set())
+    assert client.secure is True
+
+
+def test_same_path_redirect_is_reported_as_warning(monkeypatch) -> None:
+    monkeypatch.setattr(views_module, "reverse", lambda name: "/any/")
+    check = ViewsCheck()
+    client = _FakeClient(_FakeResponse(301, location="https://testserver/any/"))
+    findings = check._check_view(client, "any", set())
+    assert len(findings) == 1
+    assert findings[0].severity == "WARNING"
+    assert "never exercised" in findings[0].message
+    assert "https://testserver/any/" in findings[0].message
+
+
+def test_redirect_to_a_different_path_is_ignored(monkeypatch) -> None:
+    monkeypatch.setattr(views_module, "reverse", lambda name: "/any/")
+    check = ViewsCheck()
+    client = _FakeClient(_FakeResponse(302, location="/accounts/login/?next=/any/"))
+    assert check._check_view(client, "any", set()) == []
+
+
+def test_run_survives_ssl_redirect_settings(settings) -> None:
+    """With SECURE_SSL_REDIRECT on, views must still be exercised (over https)."""
+    settings.MIDDLEWARE = [
+        "django.middleware.security.SecurityMiddleware",
+        *settings.MIDDLEWARE,
+    ]
+    settings.SECURE_SSL_REDIRECT = True
+    check = ViewsCheck()
+    assert check.run(None) == []
+
+
+def test_run_warns_on_prepend_www_redirects(settings) -> None:
+    """A same-path redirect that https cannot avoid must surface as WARNING."""
+    settings.MIDDLEWARE = [
+        "django.middleware.common.CommonMiddleware",
+        *settings.MIDDLEWARE,
+    ]
+    settings.PREPEND_WWW = True
+    check = ViewsCheck()
+    findings = check.run(None)
+    assert findings
+    assert all(f.severity == "WARNING" for f in findings)
+    assert any("www.testserver" in f.message for f in findings)

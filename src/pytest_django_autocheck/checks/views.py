@@ -23,6 +23,12 @@ urls check owns them.
 Like the urls check, this one starts from ``get_resolver()`` (the active
 ``ROOT_URLCONF``); the ``app_configs`` argument is accepted for interface
 compatibility and ignored.
+
+Requests are made as simulated HTTPS (``secure=True``) so a project with
+``SECURE_SSL_REDIRECT`` enabled does not answer every GET with a 301 that
+would silently skip all the views. Any remaining redirect that points back at
+the same path (only the scheme or host changes, e.g. a www redirect) is
+reported as a WARNING because it means the view was never exercised.
 """
 
 from __future__ import annotations
@@ -36,6 +42,7 @@ from django.test import Client
 from django.urls import get_resolver, reverse
 from django.urls.resolvers import URLResolver
 
+from pytest_django_autocheck.checks.shared.http import same_path_redirect
 from pytest_django_autocheck.checks.shared.scope import (
     external_prefixes,
     is_within,
@@ -120,7 +127,7 @@ class ViewsCheck(BaseCheck):
             # poison the transaction for the URLs checked next (PostgreSQL
             # aborts the whole transaction on a failed query).
             with transaction.atomic():
-                response = client.get(url)
+                response = client.get(url, secure=True)
         except Exception as exc:  # noqa: BLE001 - reported as a finding
             return [
                 Finding(
@@ -129,6 +136,18 @@ class ViewsCheck(BaseCheck):
                     name,
                     f"GET {url} raised {type(exc).__name__}: {exc}",
                     exc,
+                )
+            ]
+
+        location = same_path_redirect(response, url)
+        if location is not None:
+            return [
+                Finding(
+                    self.name,
+                    "WARNING",
+                    name,
+                    f"GET {url} was redirected to {location} (same path): "
+                    "the view was never exercised.",
                 )
             ]
 

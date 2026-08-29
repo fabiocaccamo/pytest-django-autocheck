@@ -91,7 +91,7 @@ def test_check_view_reports_unreversible_url() -> None:
 def test_check_view_reports_server_error_status() -> None:
     check = AdminCheck()
     fake_client = types.SimpleNamespace(
-        get=lambda url: types.SimpleNamespace(status_code=500)
+        get=lambda url, **kwargs: types.SimpleNamespace(status_code=500)
     )
     findings = check._check_view(
         fake_client, "changelist", ("exampleapp", "author"), [], "exampleapp.Author"
@@ -101,7 +101,7 @@ def test_check_view_reports_server_error_status() -> None:
 
 
 def test_check_view_reports_raised_exception() -> None:
-    def boom(url):
+    def boom(url, **kwargs):
         raise RuntimeError("render exploded")
 
     check = AdminCheck()
@@ -111,6 +111,49 @@ def test_check_view_reports_raised_exception() -> None:
     )
     assert findings[0].severity == "ERROR"
     assert "render exploded" in findings[0].message
+
+
+def test_check_view_requests_over_https() -> None:
+    calls: dict[str, object] = {}
+
+    def get(url, secure=False):
+        calls["secure"] = secure
+        return types.SimpleNamespace(status_code=200, headers={})
+
+    check = AdminCheck()
+    fake_client = types.SimpleNamespace(get=get)
+    findings = check._check_view(
+        fake_client, "changelist", ("exampleapp", "author"), [], "exampleapp.Author"
+    )
+    assert findings == []
+    assert calls["secure"] is True
+
+
+def test_check_view_warns_on_same_path_redirect() -> None:
+    def get(url, **kwargs):
+        return types.SimpleNamespace(
+            status_code=301, headers={"Location": f"https://www.testserver{url}"}
+        )
+
+    check = AdminCheck()
+    fake_client = types.SimpleNamespace(get=get)
+    findings = check._check_view(
+        fake_client, "changelist", ("exampleapp", "author"), [], "exampleapp.Author"
+    )
+    assert len(findings) == 1
+    assert findings[0].severity == "WARNING"
+    assert "never exercised" in findings[0].message
+
+
+def test_run_survives_ssl_redirect_settings(settings) -> None:
+    """With SECURE_SSL_REDIRECT on, admin views must still be exercised."""
+    settings.MIDDLEWARE = [
+        "django.middleware.security.SecurityMiddleware",
+        *settings.MIDDLEWARE,
+    ]
+    settings.SECURE_SSL_REDIRECT = True
+    check = AdminCheck()
+    assert check.run(_exampleapp()) == []
 
 
 def test_change_view_instance_failure_is_warning(monkeypatch) -> None:

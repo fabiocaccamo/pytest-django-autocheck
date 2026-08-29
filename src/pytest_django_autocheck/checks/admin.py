@@ -17,6 +17,12 @@ The check is generic: the superuser is built with the project's own user model
 through the shared generator, admin URLs are resolved by reverse(), and no
 assumption is made about the project under inspection. The admin site is
 injectable for testability and defaults to ``django.contrib.admin.site``.
+
+Requests are made as simulated HTTPS (``secure=True``) so a project with
+``SECURE_SSL_REDIRECT`` enabled does not answer every GET with a 301 that
+would silently skip the views. Any remaining redirect that points back at the
+same path (only the scheme or host changes, e.g. a www redirect) is reported
+as a WARNING because it means the view was never exercised.
 """
 
 from __future__ import annotations
@@ -30,6 +36,7 @@ from django.test import Client, RequestFactory
 from django.urls import NoReverseMatch, reverse
 
 from pytest_django_autocheck.checks.shared.builders import make_instance
+from pytest_django_autocheck.checks.shared.http import same_path_redirect
 from pytest_django_autocheck.checks.shared.scope import inspected_labels
 from pytest_django_autocheck.registry import BaseCheck, Finding
 
@@ -213,7 +220,7 @@ class AdminCheck(BaseCheck):
             # Nested savepoint: a view that dies on a broken query must not
             # poison the transaction for the views and models checked next.
             with transaction.atomic():
-                response = client.get(url)
+                response = client.get(url, secure=True)
         except Exception as exc:  # noqa: BLE001 - reported as a finding
             return [
                 Finding(
@@ -222,6 +229,18 @@ class AdminCheck(BaseCheck):
                     target,
                     f"admin {view} raised {type(exc).__name__}: {exc}",
                     exc,
+                )
+            ]
+
+        location = same_path_redirect(response, url)
+        if location is not None:
+            return [
+                Finding(
+                    self.name,
+                    "WARNING",
+                    target,
+                    f"admin {view} was redirected to {location} (same path): "
+                    "the view was never exercised.",
                 )
             ]
 
