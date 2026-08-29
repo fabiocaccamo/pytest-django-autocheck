@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from django.apps.config import AppConfig
+    from django.urls.resolvers import URLPattern
 
 
 class UrlsCheck(BaseCheck):
@@ -63,7 +64,9 @@ class UrlsCheck(BaseCheck):
                 findings.extend(self._check_pattern(pattern, namespace_prefix))
         return findings
 
-    def _check_pattern(self, pattern: object, namespace_prefix: str) -> list[Finding]:
+    def _check_pattern(
+        self, pattern: URLPattern, namespace_prefix: str
+    ) -> list[Finding]:
         try:
             pattern.callback  # noqa: B018 - resolves string views eagerly
         except Exception as exc:  # noqa: BLE001 - reported as a finding

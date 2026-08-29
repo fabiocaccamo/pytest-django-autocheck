@@ -54,6 +54,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence
 
     from django.apps.config import AppConfig
+    from django.urls.resolvers import URLPattern
 
 _ADMIN_NAMESPACE = "admin"
 
@@ -90,7 +91,7 @@ class ViewsCheck(BaseCheck):
                 yield f"{namespace_prefix}{pattern.name}"
 
     @staticmethod
-    def _is_project_view(pattern: object) -> bool:
+    def _is_project_view(pattern: URLPattern) -> bool:
         """Return ``True`` when the pattern's view is owned by the project.
 
         Third-party views (under ``site-packages``/stdlib/env prefixes) and
