@@ -39,6 +39,7 @@ Supported settings (the prefix is omitted in this list):
   pre-production audit.
 """
 
+import copy
 from typing import Any
 
 from django.conf import settings
@@ -59,6 +60,8 @@ def get_setting(name: str) -> Any:
     """Return the project's value for ``name`` or the documented default.
 
     ``name`` is the setting key without the ``PYTEST_DJANGO_AUTOCHECK_``
-    prefix and must be one of the keys defined in :data:`DEFAULTS`.
+    prefix and must be one of the keys defined in :data:`DEFAULTS`. Defaults
+    are returned as shallow copies so a caller mutating the value cannot
+    corrupt them for the rest of the process.
     """
-    return getattr(settings, SETTING_PREFIX + name, DEFAULTS[name])
+    return getattr(settings, SETTING_PREFIX + name, copy.copy(DEFAULTS[name]))

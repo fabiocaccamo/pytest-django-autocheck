@@ -32,3 +32,8 @@ def test_models_exclude_defaults_to_empty_list() -> None:
 
 def test_models_factories_defaults_to_empty_dict() -> None:
     assert conf.get_setting("MODELS_FACTORIES") == {}
+
+
+def test_mutating_a_returned_default_does_not_leak() -> None:
+    conf.get_setting("MODELS_EXCLUDE").append("polluted")
+    assert conf.get_setting("MODELS_EXCLUDE") == []
