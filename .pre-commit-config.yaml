@@ -18,7 +18,7 @@ repos:
         # keep in sync with requires-python in pyproject.toml
         args: ["--py310-plus"]
   - repo: https://github.com/adamchainz/django-upgrade
-    rev: 1.30.0
+    rev: 1.32.0
     hooks:
       - id: django-upgrade
         # keep in sync with the minimum supported Django (pyproject.toml)
@@ -30,12 +30,12 @@ repos:
         # keep in sync with the minimum supported Django (pyproject.toml)
         args: ["--target-version", "5.0"]
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.18
+    rev: v0.16.5
     hooks:
       - id: ruff
         args: ["--fix", "--exit-non-zero-on-fix"]
   - repo: https://github.com/pycqa/isort
-    rev: 8.0.1
+    rev: 9.0.1
     hooks:
       - id: isort
         args: ["--profile", "black"]
