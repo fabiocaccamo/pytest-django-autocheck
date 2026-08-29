@@ -11,6 +11,30 @@ on:
 
 jobs:
 
+  prepare:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    # Combinations follow each Django release's official Python support
+    # (keep in sync with tox.ini).
+    - name: Create matrix
+      uses: fabiocaccamo/create-matrix-action@c31a63f5bfe2ce1cc2a95d4adb6d45e880f5548f # v6
+      id: create_matrix
+      with:
+        matrix: |
+          os {ubuntu-latest, macos-latest, windows-latest}, python-version {3.10}, django-version {5.0, 5.1, 5.2}
+          os {ubuntu-latest, macos-latest, windows-latest}, python-version {3.11}, django-version {5.0, 5.1, 5.2}
+          os {ubuntu-latest, macos-latest, windows-latest}, python-version {3.12}, django-version {5.0, 5.1, 5.2, 6.0, 6.1}
+          os {ubuntu-latest, macos-latest, windows-latest}, python-version {3.13}, django-version {5.1, 5.2, 6.0, 6.1}
+          os {ubuntu-latest, macos-latest, windows-latest}, python-version {3.14}, django-version {6.0, 6.1}
+
+    outputs:
+      matrix: ${{ steps.create_matrix.outputs.matrix }}
+
   lint:
 
     runs-on: ubuntu-latest
@@ -32,13 +56,14 @@ jobs:
 
   test:
 
+    needs: [prepare]
+
     strategy:
       fail-fast: false
       matrix:
-        platform: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
+        include: ${{ fromJson(needs.prepare.outputs.matrix) }}
 
-    runs-on: ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
 
     steps:
 
@@ -54,6 +79,10 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install -e ".[test]"
+
+    - name: Install Django ${{ matrix.django-version }}
+      run: |
+        python -m pip install "Django==${{ matrix.django-version }}.*"
 
     # The plugin is imported at pytest startup, before pytest-cov would begin
     # measuring, so `coverage run` is required to capture import-time lines.
