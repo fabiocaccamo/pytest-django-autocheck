@@ -5,18 +5,32 @@ valid Django project with the admin enabled so the checks have something to
 inspect.
 """
 
+import os
+
 SECRET_KEY = "autocheck-test-secret-key-not-for-production"
 
 DEBUG = False
 
 ALLOWED_HOSTS: list[str] = []
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": ":memory:",
+if os.environ.get("DATABASE_ENGINE") == "postgres":
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.environ.get("POSTGRES_DB", "postgres"),
+            "USER": os.environ.get("POSTGRES_USER", "postgres"),
+            "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "postgres"),
+            "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
+            "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": ":memory:",
+        }
+    }
 
 INSTALLED_APPS = [
     "django.contrib.admin",
