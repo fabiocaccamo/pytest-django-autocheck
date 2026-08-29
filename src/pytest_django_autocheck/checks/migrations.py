@@ -233,14 +233,16 @@ class MigrationsCheck(BaseCheck):
 
     def _inspect(self, operations: Sequence[Operation], target: str) -> list[Finding]:
         findings: list[Finding] = []
-        for operation in operations:
+        for index, operation in enumerate(operations):
             if isinstance(operation, RunPython):
                 findings.extend(
                     self._inspect_reverse(
                         target,
                         is_irreversible=operation.reverse_code is None,
                         is_noop=operation.reverse_code is RunPython.noop,
-                        label="RunPython",
+                        label=self._describe_operation(
+                            "RunPython", index, operation.code
+                        ),
                     )
                 )
             elif isinstance(operation, RunSQL):
@@ -249,10 +251,22 @@ class MigrationsCheck(BaseCheck):
                         target,
                         is_irreversible=operation.reverse_sql is None,
                         is_noop=operation.reverse_sql == RunSQL.noop,
-                        label="RunSQL",
+                        label=self._describe_operation("RunSQL", index),
                     )
                 )
         return findings
+
+    @staticmethod
+    def _describe_operation(kind: str, index: int, code: object | None = None) -> str:
+        """Name the operation by its index (and forward callable, if any).
+
+        The index makes each finding unique and actionable when a migration
+        contains several operations of the same kind, which would otherwise
+        produce identical duplicate messages.
+        """
+        name = getattr(code, "__qualname__", "")
+        suffix = f" ({name})" if name else ""
+        return f"{kind} operation at index {index}{suffix}"
 
     def _inspect_reverse(
         self,
@@ -268,8 +282,7 @@ class MigrationsCheck(BaseCheck):
                     self.name,
                     "ERROR",
                     target,
-                    f"{label} operation is irreversible "
-                    "(no reverse_code/reverse_sql).",
+                    f"{label} is irreversible (no reverse_code/reverse_sql).",
                 )
             ]
         if is_noop:
@@ -278,7 +291,7 @@ class MigrationsCheck(BaseCheck):
                     self.name,
                     "WARNING",
                     target,
-                    f"{label} operation reverses to a no-op: it is technically "
+                    f"{label} reverses to a no-op: it is technically "
                     "reversible but may silently drop data.",
                 )
             ]

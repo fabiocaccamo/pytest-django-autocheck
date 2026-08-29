@@ -39,6 +39,7 @@ def test_inspect_runpython_irreversible() -> None:
     findings = check._inspect([op], "app.0001")
     assert len(findings) == 1
     assert findings[0].severity == "ERROR"
+    assert "RunPython operation at index 0" in findings[0].message
 
 
 def test_inspect_runpython_noop_reverse() -> None:
@@ -47,6 +48,33 @@ def test_inspect_runpython_noop_reverse() -> None:
     findings = check._inspect([op], "app.0001")
     assert len(findings) == 1
     assert findings[0].severity == "WARNING"
+    assert "RunPython operation at index 0" in findings[0].message
+
+
+def test_inspect_includes_forward_callable_name() -> None:
+    def populate_things(apps, schema_editor):
+        pass
+
+    check = MigrationsCheck()
+    op = RunPython(populate_things, RunPython.noop)
+    findings = check._inspect([op], "app.0001")
+    assert "(" in findings[0].message
+    assert "populate_things" in findings[0].message
+
+
+def test_inspect_distinguishes_multiple_noop_operations() -> None:
+    check = MigrationsCheck()
+    ops = [
+        RunPython(lambda apps, schema: None, RunPython.noop),
+        RunSQL("SELECT 1;"),
+        RunPython(lambda apps, schema: None, RunPython.noop),
+    ]
+    findings = check._inspect(ops, "app.0001")
+    messages = [f.message for f in findings]
+    assert len(messages) == len(set(messages)) == 3
+    assert "at index 0" in messages[0]
+    assert "RunSQL operation at index 1" in messages[1]
+    assert "at index 2" in messages[2]
 
 
 def test_inspect_runpython_with_explicit_reverse_is_clean() -> None:
@@ -67,6 +95,7 @@ def test_inspect_runsql_noop_reverse() -> None:
     op = RunSQL("SELECT 1;", RunSQL.noop)
     findings = check._inspect([op], "app.0001")
     assert findings[0].severity == "WARNING"
+    assert "RunSQL operation at index 0" in findings[0].message
 
 
 def _fake_changes():
