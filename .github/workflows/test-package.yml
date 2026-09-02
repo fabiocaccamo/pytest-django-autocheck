@@ -22,7 +22,7 @@ jobs:
     # Combinations follow each Django release's official Python support
     # (keep in sync with tox.ini).
     - name: Create matrix
-      uses: fabiocaccamo/create-matrix-action@c31a63f5bfe2ce1cc2a95d4adb6d45e880f5548f # v6
+      uses: fabiocaccamo/create-matrix-action@842c9dabf1cec0ba7417f30ec26ce2290b951ef0 # v7
       id: create_matrix
       with:
         matrix: |
@@ -35,7 +35,7 @@ jobs:
     # Postgres runs in a separate ubuntu-only job: `services` containers
     # require a Linux runner, so they can't join the mixed-OS matrix above.
     - name: Create postgres matrix
-      uses: fabiocaccamo/create-matrix-action@c31a63f5bfe2ce1cc2a95d4adb6d45e880f5548f # v6
+      uses: fabiocaccamo/create-matrix-action@842c9dabf1cec0ba7417f30ec26ce2290b951ef0 # v7
       id: create_matrix_postgres
       with:
         matrix: |
