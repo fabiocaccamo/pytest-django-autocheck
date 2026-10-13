@@ -26,7 +26,6 @@ jobs:
       id: create_matrix
       with:
         matrix: |
-          os {ubuntu-latest, macos-latest, windows-latest}, python-version {3.10}, django-version {5.0, 5.1, 5.2}
           os {ubuntu-latest, macos-latest, windows-latest}, python-version {3.11}, django-version {5.0, 5.1, 5.2}
           os {ubuntu-latest, macos-latest, windows-latest}, python-version {3.12}, django-version {5.0, 5.1, 5.2, 6.0, 6.1}
           os {ubuntu-latest, macos-latest, windows-latest}, python-version {3.13}, django-version {5.1, 5.2, 6.0, 6.1}
@@ -39,7 +38,6 @@ jobs:
       id: create_matrix_postgres
       with:
         matrix: |
-          python-version {3.10}, django-version {5.0, 5.1, 5.2}
           python-version {3.11}, django-version {5.0, 5.1, 5.2}
           python-version {3.12}, django-version {5.0, 5.1, 5.2, 6.0, 6.1}
           python-version {3.13}, django-version {5.1, 5.2, 6.0, 6.1}
