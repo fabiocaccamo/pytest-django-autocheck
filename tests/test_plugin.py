@@ -41,6 +41,38 @@ def test_modifyitems_honors_only_and_skip(monkeypatch) -> None:
     assert items == ["item::imports", "item::admin"]
 
 
+@pytest.mark.parametrize(
+    ("only", "skip", "expected"),
+    [
+        (["imports"], [], ["item::imports"]),
+        (["imports", "urls"], ["urls"], ["item::imports"]),
+    ],
+)
+def test_modifyitems_runs_when_only_or_skip_is_given_without_autocheck(
+    monkeypatch, only, skip, expected
+) -> None:
+    config = types.SimpleNamespace(
+        option=types.SimpleNamespace(
+            autocheck=False, autocheck_only=only, autocheck_skip=skip
+        )
+    )
+    monkeypatch.setattr(
+        plugin, "_build_item", lambda session, check: f"item::{check.name}"
+    )
+    items: list[object] = []
+    plugin.pytest_collection_modifyitems(session="session", config=config, items=items)
+    assert items == expected
+
+
+def test_skip_alone_implies_autocheck() -> None:
+    config = types.SimpleNamespace(
+        option=types.SimpleNamespace(
+            autocheck=False, autocheck_only=[], autocheck_skip=["templates"]
+        )
+    )
+    assert plugin._is_autocheck_requested(config) is True
+
+
 def test_autocheck_items_are_injected(pytestconfig) -> None:
     # The library dogfoods its own plugin: --autocheck is enabled in addopts,
     # so the session must contain one synthetic item per built-in check.

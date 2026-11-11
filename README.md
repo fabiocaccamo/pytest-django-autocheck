@@ -80,7 +80,8 @@ pytest --autocheck --autocheck-skip=templates --autocheck-skip=serializers
 ```
 
 Both flags can be combined; `--autocheck-skip` is applied after
-`--autocheck-only`, so a check named in both ends up skipped.
+`--autocheck-only`, so a check named in both ends up skipped. Either flag
+implies `--autocheck`, so `pytest --autocheck-only=admin` is enough.
 
 Valid check names for both flags: `admin`, `forms`, `imports`,
 `management_commands`, `migrations`, `models`, `serializers`, `system_checks`,

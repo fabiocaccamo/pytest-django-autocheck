@@ -5,9 +5,10 @@ that is needed. When ``DJANGO_SETTINGS_MODULE`` is not configured (no env var,
 no ``--ds`` and no ini option), the plugin discovers it from the project's
 ``manage.py`` the same way ``manage.py`` itself does, and sets it before
 pytest-django reads it. pytest-django then handles ``django.setup()``
-and the test database. The single entry point is the ``--autocheck`` flag: when
-set, one synthetic test item per registered check is collected so findings flow
-into the standard pytest report (``ERROR`` findings fail the run,
+and the test database. The single entry point is the ``--autocheck`` flag
+(implied by ``--autocheck-only`` and ``--autocheck-skip``): when set, one
+synthetic test item per registered check is collected so findings flow into
+the standard pytest report (``ERROR`` findings fail the run,
 ``WARNING``/``INFO`` are shown alongside).
 """
 
@@ -52,7 +53,10 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         default=[],
         dest="autocheck_only",
         metavar="CHECK",
-        help="Run only the named check(s), e.g. --autocheck-only=admin.",
+        help=(
+            "Run only the named check(s), e.g. --autocheck-only=admin "
+            "(implies --autocheck)."
+        ),
     )
     group.addoption(
         "--autocheck-skip",
@@ -60,7 +64,10 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         default=[],
         dest="autocheck_skip",
         metavar="CHECK",
-        help="Skip the named check(s), e.g. --autocheck-skip=templates.",
+        help=(
+            "Skip the named check(s), e.g. --autocheck-skip=templates "
+            "(implies --autocheck)."
+        ),
     )
 
 
@@ -145,11 +152,22 @@ def pytest_collection_modifyitems(
     config: pytest.Config,
     items: list[pytest.Item],
 ) -> None:
-    if not config.option.autocheck:
+    if not _is_autocheck_requested(config):
         return
     only = config.option.autocheck_only or None
     skip = config.option.autocheck_skip or None
     items.extend(_build_item(session, check) for check in get_checks(only, skip))
+
+
+def _is_autocheck_requested(config: pytest.Config) -> bool:
+    """Return whether the checks must run.
+
+    Selecting or skipping checks implies running them: ignoring
+    ``--autocheck-only=admin`` because ``--autocheck`` was left out would run
+    nothing and still exit green.
+    """
+    option = config.option
+    return bool(option.autocheck or option.autocheck_only or option.autocheck_skip)
 
 
 def _build_item(session: pytest.Session, check: Check) -> pytest.Function:
