@@ -43,6 +43,7 @@ from django.urls.resolvers import URLResolver
 
 from pytest_django_autocheck.checks.shared.http import same_path_redirect
 from pytest_django_autocheck.checks.shared.scope import is_project_path
+from pytest_django_autocheck.checks.shared.urls import nested_namespace_prefix
 from pytest_django_autocheck.registry import BaseCheck, Finding
 
 if TYPE_CHECKING:
@@ -75,13 +76,11 @@ class ViewsCheck(BaseCheck):
             return
         for pattern in patterns:
             if isinstance(pattern, URLResolver):
-                namespace = pattern.namespace
-                if namespace == _ADMIN_NAMESPACE:
+                if pattern.namespace == _ADMIN_NAMESPACE:
                     continue
-                child_prefix = (
-                    f"{namespace_prefix}{namespace}:" if namespace else namespace_prefix
+                yield from self._iter_names(
+                    pattern, nested_namespace_prefix(namespace_prefix, pattern)
                 )
-                yield from self._iter_names(pattern, child_prefix)
             elif pattern.name and self._is_project_view(pattern):
                 yield f"{namespace_prefix}{pattern.name}"
 

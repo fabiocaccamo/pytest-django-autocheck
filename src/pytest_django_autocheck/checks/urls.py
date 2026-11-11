@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 from django.urls import NoReverseMatch, get_resolver, reverse
 from django.urls.resolvers import URLResolver
 
+from pytest_django_autocheck.checks.shared.urls import nested_namespace_prefix
 from pytest_django_autocheck.registry import BaseCheck, Finding
 
 if TYPE_CHECKING:
@@ -55,11 +56,11 @@ class UrlsCheck(BaseCheck):
         findings: list[Finding] = []
         for pattern in patterns:
             if isinstance(pattern, URLResolver):
-                namespace = pattern.namespace
-                child_prefix = (
-                    f"{namespace_prefix}{namespace}:" if namespace else namespace_prefix
+                findings.extend(
+                    self._walk(
+                        pattern, nested_namespace_prefix(namespace_prefix, pattern)
+                    )
                 )
-                findings.extend(self._walk(pattern, child_prefix))
             else:
                 findings.extend(self._check_pattern(pattern, namespace_prefix))
         return findings
