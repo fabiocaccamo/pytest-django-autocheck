@@ -75,16 +75,29 @@ def excluded_model_labels() -> set[str]:
 
 
 def model_factory_paths() -> dict[str, str]:
-    """Return lowercased label -> dotted path from ``MODELS_FACTORIES``."""
+    """Return lowercased label -> dotted path from ``MODELS_FACTORIES``.
+
+    The labels are validated against the installed models: checks call this
+    once per run, so a typo fails loudly before any instance is built.
+    """
+    paths = configured_model_factory_paths()
+    _validate_model_labels(set(paths), "PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES")
+    return paths
+
+
+def configured_model_factory_paths() -> dict[str, str]:
+    """Return ``MODELS_FACTORIES`` lowercased, without validating its labels.
+
+    Cheap enough to be read for every generated instance, unlike
+    :func:`model_factory_paths`, which walks every installed model.
+    """
     value = get_setting("MODELS_FACTORIES")
     if not isinstance(value, dict):
         raise ImproperlyConfigured(
             "PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES must be a dict mapping "
             f"'app_label.ModelName' labels to dotted paths, got {value!r}."
         )
-    paths = {label.lower(): path for label, path in value.items()}
-    _validate_model_labels(set(paths), "PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES")
-    return paths
+    return {label.lower(): path for label, path in value.items()}
 
 
 def _validate_model_labels(labels: set[str], setting_name: str) -> None:

@@ -89,6 +89,11 @@ class AdminCheck(BaseCheck):
         if not site._registry:
             return []
         allowed = inspected_labels(app_configs)
+        # Read (and validate) the settings before anything is built, so a
+        # misconfiguration fails loudly instead of being reported as a failed
+        # superuser setup. A configured factory wins over the exclusion: it
+        # makes the model checkable after all.
+        excluded = excluded_model_labels() - set(model_factory_paths())
 
         try:
             user = self._build_superuser()
@@ -108,9 +113,6 @@ class AdminCheck(BaseCheck):
             ]
 
         findings: list[Finding] = []
-        # A configured factory wins over the exclusion: it makes the model
-        # checkable after all.
-        excluded = excluded_model_labels() - set(model_factory_paths())
         for model, admin_instance in site._registry.items():
             opts = model._meta
             if opts.app_label not in allowed:

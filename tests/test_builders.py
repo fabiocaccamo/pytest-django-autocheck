@@ -91,6 +91,18 @@ def test_configured_factory_returning_wrong_type_raises() -> None:
 
 
 @pytest.mark.django_db
+def test_make_instance_does_not_walk_the_installed_models(monkeypatch) -> None:
+    """Label validation is the checks' job, once per run, not once per instance."""
+    from pytest_django_autocheck.checks.shared import scope
+
+    def unexpected(labels, setting_name):
+        raise AssertionError("labels must not be validated per instance")
+
+    monkeypatch.setattr(scope, "_validate_model_labels", unexpected)
+    assert builders.make_instance(Author).pk is not None
+
+
+@pytest.mark.django_db
 def test_make_instance_falls_back_to_bakery(monkeypatch) -> None:
     monkeypatch.setattr(builders, "_factory_for", lambda model: None)
     instance = builders.make_instance(Author)

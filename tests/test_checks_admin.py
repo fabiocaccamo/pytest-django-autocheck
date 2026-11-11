@@ -104,6 +104,16 @@ def test_excluded_models_skip_only_the_change_view(monkeypatch) -> None:
     assert [f for f in findings if f.severity != "INFO"] == []
 
 
+@override_settings(
+    PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES={"biling.Plan": "x.make_plan"}
+)
+def test_run_fails_loudly_on_misconfigured_factories() -> None:
+    from django.core.exceptions import ImproperlyConfigured
+
+    with pytest.raises(ImproperlyConfigured, match="biling.plan"):
+        AdminCheck().run(_exampleapp())
+
+
 def test_run_warns_when_superuser_setup_fails(monkeypatch) -> None:
     check = AdminCheck()
 

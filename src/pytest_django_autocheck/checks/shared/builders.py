@@ -33,7 +33,7 @@ from django.utils.module_loading import import_string
 
 from pytest_django_autocheck.checks.shared.modules import import_optional_module
 from pytest_django_autocheck.checks.shared.scope import (
-    model_factory_paths,
+    configured_model_factory_paths,
     project_app_configs,
 )
 
@@ -51,7 +51,7 @@ def make_instance(model: type[Model]) -> Model:
     Raises whatever exception generation triggers; callers are expected to
     wrap it into a :class:`~pytest_django_autocheck.registry.Finding`.
     """
-    factory_path = model_factory_paths().get(model._meta.label_lower)
+    factory_path = configured_model_factory_paths().get(model._meta.label_lower)
     if factory_path is not None:
         return _call_configured_factory(model, factory_path)
 

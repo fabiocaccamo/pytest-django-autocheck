@@ -58,6 +58,19 @@ def test_model_factory_paths_rejects_unknown_labels() -> None:
         scope.model_factory_paths()
 
 
+@override_settings(
+    PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES={"Biling.Plan": "x.make_plan"}
+)
+def test_configured_model_factory_paths_does_not_validate_labels() -> None:
+    assert scope.configured_model_factory_paths() == {"biling.plan": "x.make_plan"}
+
+
+@override_settings(PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES=["exampleapp.Author"])
+def test_configured_model_factory_paths_rejects_non_dicts() -> None:
+    with pytest.raises(ImproperlyConfigured, match="must be a dict"):
+        scope.configured_model_factory_paths()
+
+
 def _stub_model(module: str, app_name: str) -> type:
     class Stub:
         pass
