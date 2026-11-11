@@ -163,7 +163,33 @@ def pytest_collection_modifyitems(
         # A mistyped check name or missing Django settings are usage errors:
         # report the message alone instead of an internal error traceback.
         raise pytest.UsageError(str(error)) from error
+    _warn_when_no_project_app_is_detected()
     items.extend(_build_item(session, check) for check in checks)
+
+
+def _warn_when_no_project_app_is_detected() -> None:
+    """Warn that the app-scoped checks have nothing to inspect.
+
+    Most checks only inspect project apps, so when none is detected (e.g. the
+    project is installed in non-editable mode, under ``site-packages``) they
+    pass without looking at anything: say so instead of a silent green.
+    """
+    # Imported lazily: the checks package needs configured Django settings.
+    from pytest_django_autocheck.checks.shared.scope import project_app_labels
+
+    if not project_app_labels():
+        # Raised from the collection hook, a warning that ``-W error`` turns
+        # into an exception would abort the session as an internal error.
+        with warnings.catch_warnings():
+            warnings.simplefilter("always", AutocheckWarning)
+            warnings.warn(
+                "no project app was detected: every installed app lives under "
+                "site-packages (is the project installed in non-editable "
+                "mode?), so the checks scoped to project apps have nothing to "
+                "inspect.",
+                AutocheckWarning,
+                stacklevel=2,
+            )
 
 
 def _is_autocheck_requested(config: pytest.Config) -> bool:

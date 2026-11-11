@@ -108,6 +108,9 @@ third-party when it lives under `site-packages`, the standard library or the
 environment prefix. A dependency installed in editable mode (`pip install -e`)
 lives outside those locations and is therefore inspected as project code; use
 the `SKIP`/`CHECKS` settings (or `MODELS_EXCLUDE`) if its findings are noise.
+When no project app is detected at all (e.g. the project itself is installed
+in non-editable mode), a warning says so: the checks scoped to project apps
+would otherwise pass without inspecting anything.
 
 ### Settings
 

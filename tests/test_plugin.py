@@ -2,6 +2,7 @@
 
 import os
 import types
+import warnings
 
 import pytest
 from _pytest.outcomes import Failed
@@ -87,6 +88,51 @@ def test_modifyitems_reports_missing_settings_as_usage_errors(monkeypatch) -> No
     monkeypatch.setattr(plugin, "get_checks", unconfigured)
     with pytest.raises(pytest.UsageError, match="settings are not configured"):
         plugin.pytest_collection_modifyitems(session="session", config=config, items=[])
+
+
+def test_modifyitems_warns_when_no_project_app_is_detected(monkeypatch) -> None:
+    from pytest_django_autocheck.checks.shared import scope
+
+    config = types.SimpleNamespace(
+        option=types.SimpleNamespace(
+            autocheck=True, autocheck_only=["urls"], autocheck_skip=[]
+        )
+    )
+    monkeypatch.setattr(
+        plugin, "_build_item", lambda session, check: f"item::{check.name}"
+    )
+    monkeypatch.setattr(scope, "project_app_labels", lambda: set())
+    items: list[object] = []
+    with pytest.warns(plugin.AutocheckWarning, match="no project app was detected"):
+        plugin.pytest_collection_modifyitems(
+            session="session", config=config, items=items
+        )
+    assert items == ["item::urls"]
+
+
+def test_no_project_app_warning_is_never_raised_as_an_error(monkeypatch) -> None:
+    """Under ``-W error`` the collection hook must warn, not abort the session."""
+    from pytest_django_autocheck.checks.shared import scope
+
+    monkeypatch.setattr(scope, "project_app_labels", lambda: set())
+    with pytest.warns(plugin.AutocheckWarning, match="no project app was detected"):
+        warnings.simplefilter("error")
+        plugin._warn_when_no_project_app_is_detected()
+
+
+def test_modifyitems_does_not_warn_when_project_apps_are_detected(
+    monkeypatch, recwarn
+) -> None:
+    config = types.SimpleNamespace(
+        option=types.SimpleNamespace(
+            autocheck=True, autocheck_only=["urls"], autocheck_skip=[]
+        )
+    )
+    monkeypatch.setattr(
+        plugin, "_build_item", lambda session, check: f"item::{check.name}"
+    )
+    plugin.pytest_collection_modifyitems(session="session", config=config, items=[])
+    assert [w for w in recwarn if w.category is plugin.AutocheckWarning] == []
 
 
 def test_skip_alone_implies_autocheck() -> None:
