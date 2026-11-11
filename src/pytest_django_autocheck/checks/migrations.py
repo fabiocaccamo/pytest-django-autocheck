@@ -20,8 +20,9 @@ a database. In addition, the check verifies migrations dynamically: it spawns a
 short-lived subprocess that creates a throwaway database (isolated from the
 suite's own test database), then applies every migration forward, reverses it
 to zero and re-applies it forward again. Any failure in that cycle is reported
-as ``ERROR``; if the environment cannot be set up, the dynamic step is skipped
-with a ``WARNING`` and never breaks the suite.
+as ``ERROR``; if the environment cannot be set up, or the project configures
+several databases (only ``default`` can be isolated), the dynamic step is
+skipped with a ``WARNING`` and never breaks the suite.
 """
 
 from __future__ import annotations

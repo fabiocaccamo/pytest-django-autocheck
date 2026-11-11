@@ -386,3 +386,29 @@ def test_probe_destroys_the_database_when_a_forward_migration_fails(
     assert result.returncode == probe.EXIT_MIGRATION_ERROR
     assert "boom in data migration" in result.stderr
     assert _leftover_databases(tmp_path) == []
+
+
+def test_main_refuses_projects_with_several_databases(capsys) -> None:
+    connection = _fake_connection("db")
+    django_module = MagicMock()
+    db_module = MagicMock()
+    db_module.connection = connection
+    db_module.connections = ["default", "analytics"]
+    with patch.dict("sys.modules", {"django": django_module, "django.db": db_module}):
+        assert probe.main() == probe.EXIT_SETUP_ERROR
+    assert "analytics, default" in capsys.readouterr().err
+    connection.creation.create_test_db.assert_not_called()
+
+
+def test_probe_refuses_a_project_with_several_databases(tmp_path) -> None:
+    result = _run_probe_on_project(
+        tmp_path,
+        extra_databases=(
+            '"analytics": {"ENGINE": "django.db.backends.sqlite3", '
+            '"NAME": str(Path(__file__).parent / "analytics.sqlite3")},'
+        ),
+    )
+    assert result.returncode == probe.EXIT_SETUP_ERROR
+    assert "several databases (analytics, default)" in result.stderr
+    assert _leftover_databases(tmp_path) == []
+    assert not (tmp_path / "analytics.sqlite3").exists()

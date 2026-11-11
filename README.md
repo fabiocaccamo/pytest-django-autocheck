@@ -126,7 +126,9 @@ you need.
 The dynamic migration verification runs in a short-lived subprocess, isolated
 from the suite's own test database. If that subprocess can't set up its
 environment, the dynamic step is skipped with a warning rather than failing
-the run.
+the run. It is skipped the same way when the project configures more than one
+database: only `default` can be isolated, and a data migration routed to
+another alias would otherwise reach its real database.
 
 ### Instance generation
 

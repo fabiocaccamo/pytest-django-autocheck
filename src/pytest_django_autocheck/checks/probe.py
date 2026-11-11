@@ -17,12 +17,16 @@ migrations are not the project's responsibility and some ship irreversible data
 migrations that would otherwise break a foreign CI. The throwaway database is
 always destroyed afterwards.
 
+Only the ``default`` database is isolated, so the probe refuses to run on a
+project that configures several: a data migration routed to another alias
+would otherwise read and write its real database.
+
 Exit codes:
 
 - ``0``: the forward/zero/forward cycle succeeded.
 - ``1``: a migration could not be applied or reversed (reported as ``ERROR``).
-- ``2``: the environment could not be set up (reported as ``WARNING`` so it
-  never breaks a foreign CI).
+- ``2``: the environment could not be set up, or the project configures
+  several databases (reported as ``WARNING`` so it never breaks a foreign CI).
 
 Creating the throwaway database both creates the database itself and applies
 every migration to it, so a failure there is classified by its traceback:
@@ -146,9 +150,19 @@ def main() -> int:
         import django
 
         django.setup()
-        from django.db import connection
+        from django.db import connection, connections
     except Exception as exc:  # noqa: BLE001
         print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
+        return EXIT_SETUP_ERROR
+
+    aliases = sorted(connections)
+    if len(aliases) > 1:
+        print(
+            f"the project configures several databases ({', '.join(aliases)}): "
+            "only 'default' would be isolated, so a data migration could "
+            "reach the real ones",
+            file=sys.stderr,
+        )
         return EXIT_SETUP_ERROR
 
     test_settings = connection.settings_dict.setdefault("TEST", {})
