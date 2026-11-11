@@ -2,6 +2,7 @@
 
 import importlib
 import os
+import sys
 
 import pytest
 from django.apps import apps
@@ -118,6 +119,38 @@ def test_nested_installed_app_is_pruned_from_the_outer_walk(
 
     assert set(ImportsCheck._iter_app_modules(outer)) == {"core.service"}
     assert set(ImportsCheck._iter_app_modules(nested)) == {"shop.models"}
+
+
+def test_packages_are_discovered_by_their_own_name() -> None:
+    discovered = set(ImportsCheck._iter_modules(_exampleapp()))
+    assert "tests.exampleapp" in discovered
+    assert "tests.exampleapp.management.commands" in discovered
+
+
+def test_broken_package_without_other_modules_is_reported(
+    tmp_path, monkeypatch
+) -> None:
+    """A package made of its ``__init__.py`` alone must still be imported."""
+    app_dir = tmp_path / "autocheck_initonly_app"
+    (app_dir / "helpers").mkdir(parents=True)
+    (app_dir / "__init__.py").write_text("", encoding="utf-8")
+    (app_dir / "helpers" / "__init__.py").write_text(
+        "import autocheck_module_that_does_not_exist\n", encoding="utf-8"
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+
+    class FakeConfig:
+        name = "autocheck_initonly_app"
+        path = str(app_dir)
+
+    try:
+        findings = ImportsCheck().run([FakeConfig()])
+    finally:
+        sys.modules.pop("autocheck_initonly_app", None)
+    assert [finding.target for finding in findings] == [
+        "autocheck_initonly_app.helpers"
+    ]
+    assert "autocheck_module_that_does_not_exist" in findings[0].message
 
 
 def test_module_prefix_root_uses_base_name() -> None:

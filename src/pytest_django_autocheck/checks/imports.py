@@ -12,8 +12,10 @@ external when its filesystem location lives under the interpreter's
 detection is generic, with no assumption about the project layout, and relies
 on each ``AppConfig`` to provide both the dotted package name
 (``app_config.name``) and the filesystem location (``app_config.path``).
-``migrations`` packages, ``__pycache__`` and dunder modules are skipped, and
-circular imports are reported with a dedicated message.
+``migrations`` packages and ``__pycache__`` are skipped; every package is
+imported by its own name (which runs its ``__init__.py``) while the other
+dunder modules (``__main__.py``) are skipped. Circular imports are reported
+with a dedicated message.
 
 This package itself is always excluded, even when it is vendored (copied into
 the project instead of installed via pip): its own directory is detected by
@@ -108,6 +110,10 @@ class ImportsCheck(BaseCheck):
                 and os.path.realpath(os.path.join(root, directory)) not in pruned
             ]
             prefix = ImportsCheck._module_prefix(base_name, base_path, root)
+            if "__init__.py" in files:
+                # Importing the package runs its __init__.py, which nothing
+                # else would import when the package has no other module.
+                yield prefix
             for file in files:
                 if not file.endswith(".py") or file.startswith("__"):
                     continue
