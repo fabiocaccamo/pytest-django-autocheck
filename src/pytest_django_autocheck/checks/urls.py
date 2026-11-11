@@ -41,15 +41,15 @@ class UrlsCheck(BaseCheck):
     def _walk(self, resolver: URLResolver, namespace_prefix: str = "") -> list[Finding]:
         try:
             patterns = resolver.url_patterns
-        except Exception as exc:  # noqa: BLE001 - reported as a finding
+        except Exception as error:  # noqa: BLE001 - reported as a finding
             target = str(getattr(resolver, "urlconf_name", resolver))
             return [
                 Finding(
                     self.name,
                     "ERROR",
                     target,
-                    f"could not load the included URLconf: {exc}",
-                    exc,
+                    f"could not load the included URLconf: {error}",
+                    error,
                 )
             ]
 
@@ -70,14 +70,14 @@ class UrlsCheck(BaseCheck):
     ) -> list[Finding]:
         try:
             pattern.callback  # noqa: B018 - resolves string views eagerly
-        except Exception as exc:  # noqa: BLE001 - reported as a finding
+        except Exception as error:  # noqa: BLE001 - reported as a finding
             return [
                 Finding(
                     self.name,
                     "ERROR",
                     str(pattern.pattern),
-                    f"could not resolve the view: {exc}",
-                    exc,
+                    f"could not resolve the view: {error}",
+                    error,
                 )
             ]
         if pattern.name:
@@ -89,14 +89,14 @@ class UrlsCheck(BaseCheck):
             reverse(name)
         except NoReverseMatch:
             return []
-        except Exception as exc:  # noqa: BLE001 - reported as a finding
+        except Exception as error:  # noqa: BLE001 - reported as a finding
             return [
                 Finding(
                     self.name,
                     "ERROR",
                     name,
-                    f"reverse('{name}') raised {type(exc).__name__}: {exc}",
-                    exc,
+                    f"reverse('{name}') raised {type(error).__name__}: {error}",
+                    error,
                 )
             ]
         return []

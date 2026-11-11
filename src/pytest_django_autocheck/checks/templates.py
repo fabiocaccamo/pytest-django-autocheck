@@ -47,14 +47,14 @@ class TemplatesCheck(BaseCheck):
     def _check_template(self, backend: DjangoTemplates, name: str) -> list[Finding]:
         try:
             backend.get_template(name)
-        except TemplateSyntaxError as exc:
+        except TemplateSyntaxError as error:
             return [
                 Finding(
                     self.name,
                     "ERROR",
                     name,
-                    f"template syntax error: {exc}",
-                    exc,
+                    f"template syntax error: {error}",
+                    error,
                 )
             ]
         except UnicodeDecodeError:
@@ -115,7 +115,7 @@ class TemplatesCheck(BaseCheck):
     @staticmethod
     def _walk_dir(directory: str) -> Iterator[str]:
         for root, subdirs, files in os.walk(directory):
-            subdirs[:] = [d for d in subdirs if d not in _SKIP_DIRS]
+            subdirs[:] = [subdir for subdir in subdirs if subdir not in _SKIP_DIRS]
             for file in files:
                 full = os.path.join(root, file)
                 relative = os.path.relpath(full, directory)

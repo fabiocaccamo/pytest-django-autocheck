@@ -47,26 +47,26 @@ class ManagementCommandsCheck(BaseCheck):
     def _check_command(self, app_name: str, name: str) -> list[Finding]:
         try:
             command = load_command_class(app_name, name)
-        except Exception as exc:  # noqa: BLE001 - reported as a finding
+        except Exception as error:  # noqa: BLE001 - reported as a finding
             return [
                 Finding(
                     self.name,
                     "ERROR",
                     name,
-                    f"could not load the command: {exc}",
-                    exc,
+                    f"could not load the command: {error}",
+                    error,
                 )
             ]
         try:
             command.create_parser("manage.py", name)
-        except Exception as exc:  # noqa: BLE001 - reported as a finding
+        except Exception as error:  # noqa: BLE001 - reported as a finding
             return [
                 Finding(
                     self.name,
                     "ERROR",
                     name,
-                    f"create_parser raised {type(exc).__name__}: {exc}",
-                    exc,
+                    f"create_parser raised {type(error).__name__}: {error}",
+                    error,
                 )
             ]
         return []

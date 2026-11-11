@@ -60,28 +60,28 @@ class ImportsCheck(BaseCheck):
     def _check_module(self, module_path: str) -> list[Finding]:
         try:
             importlib.import_module(module_path)
-        except ImportError as exc:
+        except ImportError as error:
             message = (
-                f"circular import: {exc}"
-                if self._is_circular_import(exc)
-                else f"ImportError: {exc}"
+                f"circular import: {error}"
+                if self._is_circular_import(error)
+                else f"ImportError: {error}"
             )
-            return [Finding(self.name, "ERROR", module_path, message, exc)]
-        except Exception as exc:  # noqa: BLE001 - reported as a finding
+            return [Finding(self.name, "ERROR", module_path, message, error)]
+        except Exception as error:  # noqa: BLE001 - reported as a finding
             return [
                 Finding(
                     self.name,
                     "ERROR",
                     module_path,
-                    f"import raised {type(exc).__name__}: {exc}",
-                    exc,
+                    f"import raised {type(error).__name__}: {error}",
+                    error,
                 )
             ]
         return []
 
     @staticmethod
-    def _is_circular_import(exc: ImportError) -> bool:
-        message = str(exc)
+    def _is_circular_import(error: ImportError) -> bool:
+        message = str(error)
         return "circular import" in message or "partially initialized module" in message
 
     @staticmethod

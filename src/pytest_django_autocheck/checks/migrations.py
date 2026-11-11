@@ -141,27 +141,27 @@ class MigrationsCheck(BaseCheck):
                 env=env,
                 timeout=timeout + _PROBE_TIMEOUT_BUFFER,
             )
-        except subprocess.TimeoutExpired as exc:
+        except subprocess.TimeoutExpired as error:
             return [
                 Finding(
                     self.name,
                     "WARNING",
                     "database",
                     "the migration probe timed out, skipping "
-                    f"({exc.timeout:g}s); set "
+                    f"({error.timeout:g}s); set "
                     "PYTEST_DJANGO_AUTOCHECK_MIGRATIONS_PROBE_TIMEOUT to "
                     "raise the limit.",
-                    exc,
+                    error,
                 )
             ]
-        except OSError as exc:
+        except OSError as error:
             return [
                 Finding(
                     self.name,
                     "WARNING",
                     "database",
-                    "could not launch the migration probe, skipping " f"({exc}).",
-                    exc,
+                    f"could not launch the migration probe, skipping ({error}).",
+                    error,
                 )
             ]
 

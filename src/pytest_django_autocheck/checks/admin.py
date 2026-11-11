@@ -99,7 +99,7 @@ class AdminCheck(BaseCheck):
             user = self._build_superuser()
             client = self._build_client(user)
             request = self._build_request(user)
-        except Exception as exc:  # noqa: BLE001 - reported as a finding
+        except Exception as error:  # noqa: BLE001 - reported as a finding
             return [
                 Finding(
                     self.name,
@@ -107,15 +107,15 @@ class AdminCheck(BaseCheck):
                     "admin",
                     "could not set up an admin superuser to exercise the "
                     "admin site, skipping "
-                    f"({type(exc).__name__}: {exc}).",
-                    exc,
+                    f"({type(error).__name__}: {error}).",
+                    error,
                 )
             ]
 
         findings: list[Finding] = []
         for model, admin_instance in site._registry.items():
-            opts = model._meta
-            if opts.app_label not in allowed:
+            options = model._meta
+            if options.app_label not in allowed:
                 continue
             if is_test_support_model(model):
                 continue
@@ -144,9 +144,9 @@ class AdminCheck(BaseCheck):
 
     @staticmethod
     def _promote_superuser(user: Model) -> Model:
-        for attr in ("is_staff", "is_superuser", "is_active"):
-            if hasattr(user, attr):
-                setattr(user, attr, True)
+        for flag_name in ("is_staff", "is_superuser", "is_active"):
+            if hasattr(user, flag_name):
+                setattr(user, flag_name, True)
         return user
 
     def _check_model(
@@ -157,16 +157,16 @@ class AdminCheck(BaseCheck):
         admin_instance: ModelAdmin,
         excluded: set[str],
     ) -> list[Finding]:
-        opts = model._meta
-        target = f"{opts.app_label}.{model.__name__}"
-        info = (opts.app_label, opts.model_name)
+        options = model._meta
+        target = f"{options.app_label}.{model.__name__}"
+        model_key = (options.app_label, options.model_name)
 
         findings: list[Finding] = []
         findings.extend(self._check_config(request, admin_instance, target))
-        findings.extend(self._check_view(client, "changelist", info, [], target))
-        findings.extend(self._check_view(client, "add", info, [], target))
+        findings.extend(self._check_view(client, "changelist", model_key, [], target))
+        findings.extend(self._check_view(client, "add", model_key, [], target))
 
-        if opts.label_lower in excluded:
+        if options.label_lower in excluded:
             findings.append(
                 Finding(
                     self.name,
@@ -186,19 +186,21 @@ class AdminCheck(BaseCheck):
             # model checked after this one.
             with transaction.atomic():
                 instance = make_instance(model)
-        except Exception as exc:  # noqa: BLE001 - reported as a finding
+        except Exception as error:  # noqa: BLE001 - reported as a finding
             findings.append(
                 Finding(
                     self.name,
                     "WARNING",
                     target,
-                    "Could not create an instance to test the change view: " f"{exc}",
-                    exc,
+                    "Could not create an instance to test the change view: " f"{error}",
+                    error,
                 )
             )
             return findings
 
-        findings.extend(self._check_view(client, "change", info, [instance.pk], target))
+        findings.extend(
+            self._check_view(client, "change", model_key, [instance.pk], target)
+        )
         return findings
 
     def _check_config(
@@ -224,14 +226,14 @@ class AdminCheck(BaseCheck):
     ) -> list[Finding]:
         try:
             func(*args)
-        except Exception as exc:  # noqa: BLE001 - reported as a finding
+        except Exception as error:  # noqa: BLE001 - reported as a finding
             return [
                 Finding(
                     self.name,
                     "ERROR",
                     target,
-                    f"admin {label} raised {type(exc).__name__}: {exc}",
-                    exc,
+                    f"admin {label} raised {type(error).__name__}: {error}",
+                    error,
                 )
             ]
         return []
@@ -240,22 +242,22 @@ class AdminCheck(BaseCheck):
         self,
         client: Client,
         view: str,
-        info: tuple[str, str],
+        model_key: tuple[str, str],
         args: list[object],
         target: str,
     ) -> list[Finding]:
-        app_label, model_name = info
+        app_label, model_name = model_key
         url_name = f"{self._admin_site.name}:{app_label}_{model_name}_{view}"
         try:
             url = reverse(url_name, args=args)
-        except NoReverseMatch as exc:
+        except NoReverseMatch as error:
             return [
                 Finding(
                     self.name,
                     "ERROR",
                     target,
-                    f"admin {view} URL could not be reversed: {exc}",
-                    exc,
+                    f"admin {view} URL could not be reversed: {error}",
+                    error,
                 )
             ]
 
@@ -264,14 +266,14 @@ class AdminCheck(BaseCheck):
             # poison the transaction for the views and models checked next.
             with transaction.atomic():
                 response = client.get(url, secure=True)
-        except Exception as exc:  # noqa: BLE001 - reported as a finding
+        except Exception as error:  # noqa: BLE001 - reported as a finding
             return [
                 Finding(
                     self.name,
                     "ERROR",
                     target,
-                    f"admin {view} raised {type(exc).__name__}: {exc}",
-                    exc,
+                    f"admin {view} raised {type(error).__name__}: {error}",
+                    error,
                 )
             ]
 

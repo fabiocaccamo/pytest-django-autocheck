@@ -63,14 +63,14 @@ class FormsCheck(BaseCheck):
         target = f"{form_class.__module__}.{form_class.__qualname__}"
         try:
             form_class()
-        except Exception as exc:  # noqa: BLE001 - reported as a finding
+        except Exception as error:  # noqa: BLE001 - reported as a finding
             return [
                 Finding(
                     self.name,
                     "ERROR",
                     target,
-                    f"could not instantiate the form: {exc}",
-                    exc,
+                    f"could not instantiate the form: {error}",
+                    error,
                 )
             ]
         return []

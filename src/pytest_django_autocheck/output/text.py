@@ -18,7 +18,11 @@ def format_text(findings: Sequence[Finding]) -> str:
         return "pytest-django-autocheck: no issues found."
 
     ordered = sorted(
-        findings, key=lambda f: (_SEVERITY_ORDER.get(f.severity, 99), f.target)
+        findings,
+        key=lambda finding: (
+            _SEVERITY_ORDER.get(finding.severity, 99),
+            finding.target,
+        ),
     )
     lines = [
         f"[{finding.severity}] {finding.check_name}: "

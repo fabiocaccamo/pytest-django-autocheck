@@ -75,14 +75,14 @@ class ModelsCheck(BaseCheck):
             try:
                 with transaction.atomic():
                     instance = make_instance(model)
-            except Exception as exc:  # noqa: BLE001 - reported as a finding
+            except Exception as error:  # noqa: BLE001 - reported as a finding
                 findings.append(
                     Finding(
                         self.name,
                         "ERROR",
                         target,
-                        f"Could not create/save an instance: {exc}",
-                        exc,
+                        f"Could not create/save an instance: {error}",
+                        error,
                     )
                 )
                 continue
@@ -96,14 +96,14 @@ class ModelsCheck(BaseCheck):
         try:
             with transaction.atomic():
                 represent(instance)
-        except Exception as exc:  # noqa: BLE001 - reported as a finding
+        except Exception as error:  # noqa: BLE001 - reported as a finding
             return [
                 Finding(
                     self.name,
                     "ERROR",
                     target,
-                    f"{represent.__name__}() raised an exception: {exc}",
-                    exc,
+                    f"{represent.__name__}() raised an exception: {error}",
+                    error,
                 )
             ]
         return []
@@ -114,10 +114,10 @@ class ModelsCheck(BaseCheck):
     ) -> Iterator[type[Model]]:
         allowed = inspected_labels(app_configs)
         for model in apps.get_models():
-            opts = model._meta
-            if opts.proxy or not opts.managed or opts.swapped:
+            options = model._meta
+            if options.proxy or not options.managed or options.swapped:
                 continue
-            if opts.app_label not in allowed:
+            if options.app_label not in allowed:
                 continue
             if is_test_support_model(model):
                 continue

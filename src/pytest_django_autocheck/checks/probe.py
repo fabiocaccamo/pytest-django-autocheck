@@ -102,18 +102,18 @@ def _cancel_deadline(armed: bool) -> None:
 _MIGRATIONS_PATH_FRAGMENT = os.path.join("django", "db", "migrations") + os.sep
 
 
-def _is_migration_failure(exc: BaseException) -> bool:
+def _is_migration_failure(error: BaseException) -> bool:
     """Return ``True`` when the exception was raised while migrating.
 
     ``create_test_db`` fails both on environment problems (no CREATEDB
     privilege) and on broken migrations; only the latter walk through
     ``django/db/migrations`` frames, so the traceback tells them apart.
     """
-    tb = exc.__traceback__
-    while tb is not None:
-        if _MIGRATIONS_PATH_FRAGMENT in tb.tb_frame.f_code.co_filename:
+    traceback = error.__traceback__
+    while traceback is not None:
+        if _MIGRATIONS_PATH_FRAGMENT in traceback.tb_frame.f_code.co_filename:
             return True
-        tb = tb.tb_next
+        traceback = traceback.tb_next
     return False
 
 
@@ -159,8 +159,8 @@ def main() -> int:
 
         django.setup()
         from django.db import connection, connections
-    except Exception as exc:  # noqa: BLE001
-        print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
+    except Exception as error:  # noqa: BLE001
+        print(f"{type(error).__name__}: {error}", file=sys.stderr)
         return EXIT_SETUP_ERROR
 
     aliases = sorted(connections)
@@ -202,9 +202,9 @@ def _verify_migrations(connection: BaseDatabaseWrapper) -> int:
             file=sys.stderr,
         )
         return EXIT_SETUP_ERROR
-    except Exception as exc:  # noqa: BLE001
-        print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
-        if _is_migration_failure(exc):
+    except Exception as error:  # noqa: BLE001
+        print(f"{type(error).__name__}: {error}", file=sys.stderr)
+        if _is_migration_failure(error):
             return EXIT_MIGRATION_ERROR
         return EXIT_SETUP_ERROR
 
@@ -213,8 +213,8 @@ def _verify_migrations(connection: BaseDatabaseWrapper) -> int:
     except _ProbeTimeout:
         print("timed out while verifying migrations", file=sys.stderr)
         return EXIT_SETUP_ERROR
-    except Exception as exc:  # noqa: BLE001
-        print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
+    except Exception as error:  # noqa: BLE001
+        print(f"{type(error).__name__}: {error}", file=sys.stderr)
         return EXIT_MIGRATION_ERROR
     return EXIT_OK
 
@@ -234,9 +234,9 @@ def _destroy_throwaway_database(
         return
     try:
         connection.creation.destroy_test_db(original_name, verbosity=0)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as error:  # noqa: BLE001
         print(
             "could not destroy the throwaway database "
-            f"({type(exc).__name__}: {exc})",
+            f"({type(error).__name__}: {error})",
             file=sys.stderr,
         )

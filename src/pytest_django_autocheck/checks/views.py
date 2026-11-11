@@ -120,14 +120,14 @@ class ViewsCheck(BaseCheck):
             # aborts the whole transaction on a failed query).
             with transaction.atomic():
                 response = client.get(url, secure=True)
-        except Exception as exc:  # noqa: BLE001 - reported as a finding
+        except Exception as error:  # noqa: BLE001 - reported as a finding
             return [
                 Finding(
                     self.name,
                     "ERROR",
                     name,
-                    f"GET {url} raised {type(exc).__name__}: {exc}",
-                    exc,
+                    f"GET {url} raised {type(error).__name__}: {error}",
+                    error,
                 )
             ]
 

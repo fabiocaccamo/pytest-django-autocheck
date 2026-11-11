@@ -71,14 +71,14 @@ class SerializersCheck(BaseCheck):
         target = f"{serializer_class.__module__}.{serializer_class.__qualname__}"
         try:
             serializer_class().fields  # noqa: B018 - builds the field set
-        except Exception as exc:  # noqa: BLE001 - reported as a finding
+        except Exception as error:  # noqa: BLE001 - reported as a finding
             return [
                 Finding(
                     self.name,
                     "ERROR",
                     target,
-                    f"could not build the serializer fields: {exc}",
-                    exc,
+                    f"could not build the serializer fields: {error}",
+                    error,
                 )
             ]
         return []
