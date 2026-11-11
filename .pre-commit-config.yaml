@@ -24,13 +24,13 @@ repos:
         # keep in sync with the minimum supported Django (pyproject.toml)
         args: ["--target-version", "5.0"]
   - repo: https://github.com/adamchainz/djade-pre-commit
-    rev: "1.9.0"
+    rev: "1.10.0"
     hooks:
       - id: djade
         # keep in sync with the minimum supported Django (pyproject.toml)
         args: ["--target-version", "5.0"]
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.17.0
+    rev: v0.17.4
     hooks:
       - id: ruff
         args: ["--fix", "--exit-non-zero-on-fix"]
