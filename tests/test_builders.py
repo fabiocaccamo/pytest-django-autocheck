@@ -109,5 +109,29 @@ def test_factory_base_returns_none_without_factory_boy(monkeypatch) -> None:
     assert builders._factory_base() is None
 
 
-def test_import_optional_returns_none_for_missing_module() -> None:
-    assert builders._import_optional("nope.does.not.exist") is None
+def test_discovery_scans_project_apps_only(monkeypatch) -> None:
+    imported: list[str] = []
+
+    def record(name):
+        imported.append(name)
+        return None
+
+    monkeypatch.setattr(builders, "import_optional_module", record)
+    builders._discover_factories()
+    assert imported == [
+        "tests.exampleapp.factories",
+        "tests.exampleapp.tests.factories",
+    ]
+
+
+def test_broken_factories_module_raises_instead_of_falling_back(
+    monkeypatch,
+) -> None:
+    """Random data must never silently replace a factories module that broke."""
+
+    def broken(name):
+        raise ImportError("cannot import name 'Removed'")
+
+    monkeypatch.setattr(builders, "import_optional_module", broken)
+    with pytest.raises(ImportError, match="Removed"):
+        builders.make_instance(Author)

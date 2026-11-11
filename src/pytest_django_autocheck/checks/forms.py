@@ -8,16 +8,17 @@ instantiates each one, surfacing those errors at test time.
 
 Forms without a concrete ``Meta.model`` (abstract base forms) are skipped, as
 are forms merely imported into the module: only the model forms actually
-defined by a project app are inspected.
+defined by a project app are inspected. An app without a ``forms`` module is
+skipped, while a ``forms`` module that exists but fails to import is reported.
 """
 
 from __future__ import annotations
 
-import importlib
 from typing import TYPE_CHECKING
 
 from django.forms import ModelForm
 
+from pytest_django_autocheck.checks.shared.modules import import_optional_module
 from pytest_django_autocheck.checks.shared.scope import project_apps
 from pytest_django_autocheck.registry import BaseCheck, Finding
 
@@ -34,7 +35,27 @@ class FormsCheck(BaseCheck):
 
     def run(self, app_configs: Sequence[AppConfig] | None) -> list[Finding]:
         findings: list[Finding] = []
-        for form_class in self._iter_forms(app_configs):
+        for app_config in project_apps(app_configs):
+            findings.extend(self._check_module(f"{app_config.name}.forms"))
+        return findings
+
+    def _check_module(self, module_name: str) -> list[Finding]:
+        try:
+            module = import_optional_module(module_name)
+        except Exception as error:  # noqa: BLE001 - reported as a finding
+            return [
+                Finding(
+                    self.name,
+                    "ERROR",
+                    module_name,
+                    f"could not import the module: {type(error).__name__}: {error}",
+                    error,
+                )
+            ]
+        if module is None:
+            return []
+        findings: list[Finding] = []
+        for form_class in self._collect_forms(module):
             findings.extend(self._check_form(form_class))
         return findings
 
@@ -53,22 +74,6 @@ class FormsCheck(BaseCheck):
                 )
             ]
         return []
-
-    def _iter_forms(
-        self, app_configs: Sequence[AppConfig] | None
-    ) -> Iterator[type[ModelForm]]:
-        for app_config in project_apps(app_configs):
-            module = self._import_forms(app_config.name)
-            if module is None:
-                continue
-            yield from self._collect_forms(module)
-
-    @staticmethod
-    def _import_forms(app_name: str) -> ModuleType | None:
-        try:
-            return importlib.import_module(f"{app_name}.forms")
-        except ImportError:
-            return None
 
     @staticmethod
     def _collect_forms(module: ModuleType) -> Iterator[type[ModelForm]]:

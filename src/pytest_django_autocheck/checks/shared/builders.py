@@ -16,21 +16,26 @@ Generation strategy, in order of priority:
 3. otherwise fall back to ``model_bakery.baker.make()``, which resolves
    required fields and foreign keys recursively.
 
-The discovery stays fully generic: it relies on ``INSTALLED_APPS`` and standard
-import, never on a fixed folder layout, and is a no-op when ``factory_boy`` is
-not installed in the project.
+The discovery stays fully generic: it relies on the project's installed apps
+and standard import, never on a fixed folder layout, and is a no-op when
+``factory_boy`` is not installed in the project. Only project apps are
+scanned, so a dependency's factories never get in the way; a project factories
+module that exists but fails to import raises instead of silently falling
+back to random data.
 """
 
 from __future__ import annotations
 
-import importlib
 from functools import lru_cache
 from typing import TYPE_CHECKING
 
-from django.apps import apps
 from django.utils.module_loading import import_string
 
-from pytest_django_autocheck.checks.shared.scope import model_factory_paths
+from pytest_django_autocheck.checks.shared.modules import import_optional_module
+from pytest_django_autocheck.checks.shared.scope import (
+    model_factory_paths,
+    project_app_configs,
+)
 
 if TYPE_CHECKING:
     from types import ModuleType
@@ -82,12 +87,12 @@ def _discover_factories() -> dict[type[Model], type]:
         return {}
 
     mapping: dict[type[Model], type] = {}
-    for app_config in apps.get_app_configs():
+    for app_config in project_app_configs():
         for module_name in (
             f"{app_config.name}.factories",
             f"{app_config.name}.tests.factories",
         ):
-            module = _import_optional(module_name)
+            module = import_optional_module(module_name)
             if module is None:
                 continue
             _collect_factories(module, base, mapping)
@@ -100,13 +105,6 @@ def _factory_base() -> type | None:
     except ImportError:
         return None
     return DjangoModelFactory
-
-
-def _import_optional(name: str) -> ModuleType | None:
-    try:
-        return importlib.import_module(name)
-    except ImportError:
-        return None
 
 
 def _collect_factories(

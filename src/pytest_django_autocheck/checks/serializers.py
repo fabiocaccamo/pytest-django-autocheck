@@ -9,7 +9,9 @@ time.
 
 The check is a no-op when Django REST Framework is not installed. Abstract base
 serializers (no ``Meta.model`` and no declared fields) and serializers merely
-imported into the module are skipped.
+imported into the module are skipped. An app without a serializers module is
+skipped, while a serializers module that exists but fails to import is
+reported.
 """
 
 from __future__ import annotations
@@ -17,6 +19,7 @@ from __future__ import annotations
 import importlib
 from typing import TYPE_CHECKING
 
+from pytest_django_autocheck.checks.shared.modules import import_optional_module
 from pytest_django_autocheck.checks.shared.scope import project_apps
 from pytest_django_autocheck.registry import BaseCheck, Finding
 
@@ -36,7 +39,31 @@ class SerializersCheck(BaseCheck):
         if base is None:
             return []
         findings: list[Finding] = []
-        for serializer_class in self._iter_serializers(app_configs, base):
+        for app_config in project_apps(app_configs):
+            for module_name in (
+                f"{app_config.name}.serializers",
+                f"{app_config.name}.api.serializers",
+            ):
+                findings.extend(self._check_module(module_name, base))
+        return findings
+
+    def _check_module(self, module_name: str, base: type) -> list[Finding]:
+        try:
+            module = import_optional_module(module_name)
+        except Exception as error:  # noqa: BLE001 - reported as a finding
+            return [
+                Finding(
+                    self.name,
+                    "ERROR",
+                    module_name,
+                    f"could not import the module: {type(error).__name__}: {error}",
+                    error,
+                )
+            ]
+        if module is None:
+            return []
+        findings: list[Finding] = []
+        for serializer_class in self._collect_serializers(module, base):
             findings.extend(self._check_serializer(serializer_class))
         return findings
 
@@ -56,19 +83,6 @@ class SerializersCheck(BaseCheck):
             ]
         return []
 
-    def _iter_serializers(
-        self, app_configs: Sequence[AppConfig] | None, base: type
-    ) -> Iterator[type]:
-        for app_config in project_apps(app_configs):
-            for module_name in (
-                f"{app_config.name}.serializers",
-                f"{app_config.name}.api.serializers",
-            ):
-                module = self._import_optional(module_name)
-                if module is None:
-                    continue
-                yield from self._collect_serializers(module, base)
-
     @staticmethod
     def _serializer_base() -> type | None:
         try:
@@ -76,13 +90,6 @@ class SerializersCheck(BaseCheck):
         except ImportError:
             return None
         return module.Serializer
-
-    @staticmethod
-    def _import_optional(name: str) -> ModuleType | None:
-        try:
-            return importlib.import_module(name)
-        except ImportError:
-            return None
 
     @staticmethod
     def _collect_serializers(module: ModuleType, base: type) -> Iterator[type]:

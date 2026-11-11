@@ -1,5 +1,6 @@
 """Tests for the serializers check."""
 
+import sys
 import types
 
 from django.apps import apps
@@ -34,9 +35,24 @@ def test_explicit_app_configs_are_inspected() -> None:
 
 
 def test_project_serializer_is_discovered() -> None:
-    check = SerializersCheck()
-    discovered = set(check._iter_serializers(None, _base()))
+    from tests.exampleapp import serializers as exampleapp_serializers
+
+    discovered = set(
+        SerializersCheck._collect_serializers(exampleapp_serializers, _base())
+    )
     assert AuthorSerializer in discovered
+
+
+def test_project_serializer_is_checked(monkeypatch) -> None:
+    checked: list[type] = []
+    check = SerializersCheck()
+    monkeypatch.setattr(
+        check,
+        "_check_serializer",
+        lambda serializer_class: checked.append(serializer_class) or [],
+    )
+    check.run(_exampleapp())
+    assert checked == [AuthorSerializer]
 
 
 def test_run_is_noop_without_drf(monkeypatch) -> None:
@@ -98,7 +114,7 @@ def test_field_build_failure_is_reported() -> None:
     assert "unknown field" in findings[0].message
 
 
-def test_iter_serializers_skips_apps_without_module(monkeypatch) -> None:
+def test_run_skips_apps_without_module(monkeypatch) -> None:
     class FakeConfig:
         name = "nonexistent_package_xyz"
 
@@ -106,4 +122,34 @@ def test_iter_serializers_skips_apps_without_module(monkeypatch) -> None:
         serializers_module, "project_apps", lambda app_configs: [FakeConfig()]
     )
     check = SerializersCheck()
-    assert list(check._iter_serializers(None, _base())) == []
+    assert check.run(None) == []
+
+
+def test_serializers_module_failing_to_import_is_reported(
+    tmp_path, monkeypatch
+) -> None:
+    """An existing but broken serializers module is not "no such module"."""
+    app_dir = tmp_path / "autocheck_broken_serializers_app"
+    app_dir.mkdir()
+    (app_dir / "__init__.py").write_text("", encoding="utf-8")
+    (app_dir / "serializers.py").write_text(
+        "from rest_framework.serializers import NoSuchSerializer\n",
+        encoding="utf-8",
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+
+    class FakeConfig:
+        name = "autocheck_broken_serializers_app"
+
+    monkeypatch.setattr(
+        serializers_module, "project_apps", lambda app_configs: [FakeConfig()]
+    )
+    try:
+        findings = SerializersCheck().run(None)
+    finally:
+        sys.modules.pop("autocheck_broken_serializers_app", None)
+    assert len(findings) == 1
+    assert findings[0].severity == "ERROR"
+    assert findings[0].target == "autocheck_broken_serializers_app.serializers"
+    assert "could not import the module: ImportError" in findings[0].message
+    assert "NoSuchSerializer" in findings[0].message

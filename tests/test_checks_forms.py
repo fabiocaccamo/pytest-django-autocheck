@@ -1,5 +1,6 @@
 """Tests for the forms check."""
 
+import sys
 import types
 
 from django import forms
@@ -32,8 +33,19 @@ def test_explicit_app_configs_are_inspected() -> None:
 
 
 def test_project_form_is_discovered() -> None:
+    from tests.exampleapp import forms as exampleapp_forms
+
+    assert AuthorForm in set(FormsCheck._collect_forms(exampleapp_forms))
+
+
+def test_project_form_is_checked(monkeypatch) -> None:
+    checked: list[type] = []
     check = FormsCheck()
-    assert AuthorForm in set(check._iter_forms(None))
+    monkeypatch.setattr(
+        check, "_check_form", lambda form_class: checked.append(form_class) or []
+    )
+    check.run(_exampleapp())
+    assert checked == [AuthorForm]
 
 
 def test_collect_forms_skips_abstract_and_imported(monkeypatch) -> None:
@@ -58,11 +70,11 @@ def test_collect_forms_skips_abstract_and_imported(monkeypatch) -> None:
     assert collected == [Good]
 
 
-def test_import_forms_returns_none_when_absent() -> None:
-    assert FormsCheck._import_forms("nonexistent_package_xyz") is None
+def test_missing_forms_module_has_no_findings() -> None:
+    assert FormsCheck()._check_module("nonexistent_package_xyz.forms") == []
 
 
-def test_iter_forms_skips_apps_without_forms(monkeypatch) -> None:
+def test_run_skips_apps_without_forms(monkeypatch) -> None:
     class FakeConfig:
         name = "nonexistent_package_xyz"
 
@@ -70,7 +82,34 @@ def test_iter_forms_skips_apps_without_forms(monkeypatch) -> None:
         forms_module, "project_apps", lambda app_configs: [FakeConfig()]
     )
     check = FormsCheck()
-    assert list(check._iter_forms(None)) == []
+    assert check.run(None) == []
+
+
+def test_forms_module_failing_to_import_is_reported(tmp_path, monkeypatch) -> None:
+    """An existing but broken ``forms`` module is not "no forms module"."""
+    app_dir = tmp_path / "autocheck_broken_forms_app"
+    app_dir.mkdir()
+    (app_dir / "__init__.py").write_text("", encoding="utf-8")
+    (app_dir / "forms.py").write_text(
+        "from django.forms import NoSuchFormClass\n", encoding="utf-8"
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+
+    class FakeConfig:
+        name = "autocheck_broken_forms_app"
+
+    monkeypatch.setattr(
+        forms_module, "project_apps", lambda app_configs: [FakeConfig()]
+    )
+    try:
+        findings = FormsCheck().run(None)
+    finally:
+        sys.modules.pop("autocheck_broken_forms_app", None)
+    assert len(findings) == 1
+    assert findings[0].severity == "ERROR"
+    assert findings[0].target == "autocheck_broken_forms_app.forms"
+    assert "could not import the module: ImportError" in findings[0].message
+    assert "NoSuchFormClass" in findings[0].message
 
 
 def test_instantiation_failure_is_reported() -> None:
