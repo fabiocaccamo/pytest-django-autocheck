@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -   Reject a check registered under a name that is already taken, and raise a broken check entry point again on the next load instead of skipping it.
 -   Emit a warning when no project app is detected, since the checks scoped to project apps would otherwise pass without inspecting anything.
 -   Report the configured limit (not the padded one) when the migration probe times out.
+-   Remove the unused `severity` attribute from the `Check` protocol, `BaseCheck` and the built-in checks: a check only needs `name` and `run(app_configs)`.
+-   Add support for `Python 3.15`.
+-   Bump GitHub actions.
+-   Bump `pre-commit` hooks.
 
 ## [0.3.0](https://github.com/fabiocaccamo/pytest-django-autocheck/releases/tag/0.3.0) - 2026-08-30
 -   Classify a failure while creating the migration probe's throwaway database by its traceback: environment problems (e.g. the database user lacks the CREATEDB privilege) are now reported as `WARNING` instead of a false `ERROR`; broken migrations still fail the run.
