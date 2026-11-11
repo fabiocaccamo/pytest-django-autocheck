@@ -226,13 +226,17 @@ def test_dynamic_check_warns_when_probe_cannot_launch() -> None:
 
 def test_dynamic_check_warns_when_probe_times_out() -> None:
     check = MigrationsCheck()
-    timeout = subprocess.TimeoutExpired(cmd=["probe"], timeout=300)
+    # The parent waits a little longer than the configured limit (300s by
+    # default) so the probe can abort itself first.
+    timeout = subprocess.TimeoutExpired(cmd=["probe"], timeout=330)
     with patch("subprocess.run", side_effect=timeout):
         findings = check._inspect_database()
     assert len(findings) == 1
     assert findings[0].severity == "WARNING"
     assert findings[0].target == "database"
     assert "timed out" in findings[0].message
+    # The message reports the limit the user configured, not the padded one.
+    assert "(300s)" in findings[0].message
     assert findings[0].exception is timeout
 
 

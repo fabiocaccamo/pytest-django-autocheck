@@ -148,7 +148,7 @@ class MigrationsCheck(BaseCheck):
                     "WARNING",
                     "database",
                     "the migration probe timed out, skipping "
-                    f"({error.timeout:g}s); set "
+                    f"({timeout:g}s); set "
                     "PYTEST_DJANGO_AUTOCHECK_MIGRATIONS_PROBE_TIMEOUT to "
                     "raise the limit.",
                     error,
