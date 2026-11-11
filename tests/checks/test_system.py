@@ -16,7 +16,6 @@ def _exampleapp():
 def test_check_metadata() -> None:
     check = SystemChecksCheck()
     assert check.name == "system_checks"
-    assert check.severity == "ERROR"
 
 
 def test_clean_project_has_no_errors() -> None:

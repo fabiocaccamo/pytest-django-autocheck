@@ -10,7 +10,6 @@ from pytest_django_autocheck.checks.urls import UrlsCheck
 def test_check_metadata() -> None:
     check = UrlsCheck()
     assert check.name == "urls"
-    assert check.severity == "ERROR"
 
 
 def test_clean_project_has_no_errors() -> None:

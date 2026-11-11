@@ -22,7 +22,6 @@ def _exampleapp():
 def test_check_metadata() -> None:
     check = ModelsCheck()
     assert check.name == "models"
-    assert check.severity == "ERROR"
 
 
 def test_clean_models_have_no_findings() -> None:

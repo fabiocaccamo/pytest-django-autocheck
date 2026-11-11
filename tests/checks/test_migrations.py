@@ -16,7 +16,6 @@ from pytest_django_autocheck.checks.shared.scope import inspected_labels
 def test_check_metadata() -> None:
     check = MigrationsCheck()
     assert check.name == "migrations"
-    assert check.severity == "ERROR"
 
 
 def test_clean_app_has_no_findings() -> None:

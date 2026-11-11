@@ -41,7 +41,6 @@ if TYPE_CHECKING:
 
 class SystemChecksCheck(BaseCheck):
     name = "system_checks"
-    severity = "ERROR"
 
     def run(self, app_configs: Sequence[AppConfig] | None) -> list[Finding]:
         messages = django_checks.run_checks(

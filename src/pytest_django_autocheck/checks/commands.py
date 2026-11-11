@@ -27,7 +27,6 @@ if TYPE_CHECKING:
 
 class ManagementCommandsCheck(BaseCheck):
     name = "management_commands"
-    severity = "ERROR"
 
     def run(self, app_configs: Sequence[AppConfig] | None) -> list[Finding]:
         allowed = self._allowed_app_names(app_configs)

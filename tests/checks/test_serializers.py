@@ -21,7 +21,6 @@ def _base():
 def test_check_metadata() -> None:
     check = SerializersCheck()
     assert check.name == "serializers"
-    assert check.severity == "ERROR"
 
 
 def test_clean_project_has_no_findings() -> None:

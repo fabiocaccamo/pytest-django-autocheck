@@ -27,7 +27,6 @@ class _FakeEntryPoint:
 
 class _ThirdPartyCheck(BaseCheck):
     name = "third_party"
-    severity = "ERROR"
 
     def run(self, app_configs):
         return []
@@ -127,6 +126,20 @@ def test_register_rejects_a_duplicate_name() -> None:
     with pytest.raises(ValueError, match="'third_party' is already registered"):
         local_registry.register(_ThirdPartyCheck())
     assert len(local_registry.checks) == 1
+
+
+def test_entry_point_check_does_not_need_a_severity(monkeypatch, _entry_point) -> None:
+    """The severity belongs to each finding: a check only needs a name and run."""
+
+    class Minimal:
+        name = "third_party"
+
+        def run(self, app_configs):
+            return []
+
+    _fake_entry_points(monkeypatch, Minimal)
+    load_entry_point_checks()
+    assert "third_party" in {check.name for check in registry.checks}
 
 
 def test_finding_defaults() -> None:

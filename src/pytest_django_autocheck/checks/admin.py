@@ -75,7 +75,6 @@ _REQUEST_GETTERS = (
 
 class AdminCheck(BaseCheck):
     name = "admin"
-    severity = "ERROR"
 
     def __init__(self, site: AdminSite | None = None) -> None:
         self._site = site

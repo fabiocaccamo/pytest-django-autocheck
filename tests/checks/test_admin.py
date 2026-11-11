@@ -22,7 +22,6 @@ def _exampleapp():
 def test_check_metadata() -> None:
     check = AdminCheck()
     assert check.name == "admin"
-    assert check.severity == "ERROR"
 
 
 def test_registered_admins_render() -> None:

@@ -47,7 +47,6 @@ if TYPE_CHECKING:
 
 class ModelsCheck(BaseCheck):
     name = "models"
-    severity = "ERROR"
 
     def run(self, app_configs: Sequence[AppConfig] | None) -> list[Finding]:
         findings: list[Finding] = []

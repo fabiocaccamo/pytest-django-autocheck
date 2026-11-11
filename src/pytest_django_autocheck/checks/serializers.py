@@ -32,7 +32,6 @@ if TYPE_CHECKING:
 
 class SerializersCheck(BaseCheck):
     name = "serializers"
-    severity = "ERROR"
 
     def run(self, app_configs: Sequence[AppConfig] | None) -> list[Finding]:
         base = self._serializer_base()

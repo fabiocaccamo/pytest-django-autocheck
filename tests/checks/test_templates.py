@@ -13,7 +13,6 @@ from pytest_django_autocheck.checks.templates import TemplatesCheck
 def test_check_metadata() -> None:
     check = TemplatesCheck()
     assert check.name == "templates"
-    assert check.severity == "ERROR"
 
 
 def test_clean_project_has_no_findings() -> None:

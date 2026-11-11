@@ -19,7 +19,6 @@ def _exampleapp():
 def test_check_metadata() -> None:
     check = FormsCheck()
     assert check.name == "forms"
-    assert check.severity == "ERROR"
 
 
 def test_clean_project_has_no_findings() -> None:

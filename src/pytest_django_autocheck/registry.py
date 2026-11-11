@@ -48,7 +48,6 @@ class Check(Protocol):
     """
 
     name: str
-    severity: Severity
 
     def run(self, app_configs: Sequence[AppConfig] | None) -> list[Finding]: ...
 
@@ -56,13 +55,13 @@ class Check(Protocol):
 class BaseCheck:
     """Convenience base class for built-in checks.
 
-    Subclasses must set ``name`` and ``severity`` and implement ``run``.
-    ``requires_db`` defaults to ``True``; checks that never touch the
-    database override it so their pytest item skips the database fixture.
+    Subclasses must set ``name`` and implement ``run``; the severity belongs
+    to each :class:`Finding`, not to the check. ``requires_db`` defaults to
+    ``True``; checks that never touch the database override it so their
+    pytest item skips the database fixture.
     """
 
     name: str = ""
-    severity: Severity = "ERROR"
     requires_db: bool = True
 
     def run(self, app_configs: Sequence[AppConfig] | None) -> list[Finding]:
@@ -141,7 +140,7 @@ def _load_entry_point_check(entry_point: EntryPoint) -> Check:
     if not isinstance(check, Check):
         raise TypeError(
             f"entry point '{entry_point.name}' in group "
-            f"'{ENTRY_POINT_GROUP}' must provide a check with 'name', "
-            "'severity' and 'run(app_configs)'."
+            f"'{ENTRY_POINT_GROUP}' must provide a check with 'name' and "
+            "'run(app_configs)'."
         )
     return check

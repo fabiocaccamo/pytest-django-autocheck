@@ -158,7 +158,7 @@ if it's not installed.
 Third-party packages can ship their own checks through the
 `pytest_django_autocheck.checks` entry-point group. Each entry point must
 resolve to a check class (instantiated with no arguments) or a check instance
-exposing `name`, `severity` and `run(app_configs) -> list[Finding]`:
+exposing `name` and `run(app_configs) -> list[Finding]`:
 
 ```toml
 [project.entry-points."pytest_django_autocheck.checks"]

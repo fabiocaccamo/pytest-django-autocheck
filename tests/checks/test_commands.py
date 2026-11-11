@@ -13,7 +13,6 @@ def _exampleapp():
 def test_check_metadata() -> None:
     check = ManagementCommandsCheck()
     assert check.name == "management_commands"
-    assert check.severity == "ERROR"
 
 
 def test_clean_project_has_no_findings() -> None:

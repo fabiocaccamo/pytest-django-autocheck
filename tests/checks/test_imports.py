@@ -18,7 +18,6 @@ def _exampleapp():
 def test_check_metadata() -> None:
     check = ImportsCheck()
     assert check.name == "imports"
-    assert check.severity == "ERROR"
 
 
 def test_clean_app_has_no_findings() -> None:

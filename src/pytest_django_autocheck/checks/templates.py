@@ -35,7 +35,6 @@ _SKIP_DIRS = {"__pycache__"}
 
 class TemplatesCheck(BaseCheck):
     name = "templates"
-    severity = "ERROR"
     requires_db = False
 
     def run(self, app_configs: Sequence[AppConfig] | None) -> list[Finding]:

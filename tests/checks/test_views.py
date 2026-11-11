@@ -30,7 +30,6 @@ class _FakeClient:
 def test_check_metadata() -> None:
     check = ViewsCheck()
     assert check.name == "views"
-    assert check.severity == "ERROR"
 
 
 def test_clean_project_has_no_findings() -> None:

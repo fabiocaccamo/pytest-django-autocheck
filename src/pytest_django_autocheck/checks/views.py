@@ -57,7 +57,6 @@ _ADMIN_NAMESPACE = "admin"
 
 class ViewsCheck(BaseCheck):
     name = "views"
-    severity = "ERROR"
 
     def run(self, app_configs: Sequence[AppConfig] | None) -> list[Finding]:
         client = Client()

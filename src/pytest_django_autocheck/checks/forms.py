@@ -31,7 +31,6 @@ if TYPE_CHECKING:
 
 class FormsCheck(BaseCheck):
     name = "forms"
-    severity = "ERROR"
 
     def run(self, app_configs: Sequence[AppConfig] | None) -> list[Finding]:
         findings: list[Finding] = []

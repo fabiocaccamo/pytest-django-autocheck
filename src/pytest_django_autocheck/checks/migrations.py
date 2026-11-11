@@ -64,7 +64,6 @@ if TYPE_CHECKING:
 
 class MigrationsCheck(BaseCheck):
     name = "migrations"
-    severity = "ERROR"
     # The static inspection never queries and the dynamic probe owns its own
     # throwaway database in a subprocess: the suite's test database is unused.
     requires_db = False
