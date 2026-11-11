@@ -412,3 +412,19 @@ def test_probe_refuses_a_project_with_several_databases(tmp_path) -> None:
     assert "several databases (analytics, default)" in result.stderr
     assert _leftover_databases(tmp_path) == []
     assert not (tmp_path / "analytics.sqlite3").exists()
+
+
+def test_main_forces_migrations_on_the_throwaway_database() -> None:
+    connection = _fake_connection("db")
+    connection.settings_dict["TEST"]["MIGRATE"] = False
+    with _patch_django(connection), patch.object(probe, "run_cycle"):
+        assert probe.main() == probe.EXIT_OK
+    assert connection.settings_dict["TEST"]["MIGRATE"] is True
+
+
+def test_probe_succeeds_when_the_project_disables_test_migrations(tmp_path) -> None:
+    result = _run_probe_on_project(
+        tmp_path, default_options='"TEST": {"MIGRATE": False},'
+    )
+    assert result.returncode == probe.EXIT_OK, result.stderr
+    assert _leftover_databases(tmp_path) == []

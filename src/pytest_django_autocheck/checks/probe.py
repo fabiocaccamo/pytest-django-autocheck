@@ -168,6 +168,10 @@ def main() -> int:
     test_settings = connection.settings_dict.setdefault("TEST", {})
     base_name = test_settings.get("NAME") or connection.settings_dict.get("NAME")
     test_settings["NAME"] = isolated_test_name(base_name, str(os.getpid()))
+    # A project disabling migrations for its tests (``TEST["MIGRATE"] =
+    # False``) would get its tables from syncdb, and the forward step would
+    # then fail on tables that already exist.
+    test_settings["MIGRATE"] = True
 
     original_name = connection.settings_dict.get("NAME")
     armed = _arm_deadline()
