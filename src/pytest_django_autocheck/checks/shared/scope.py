@@ -6,9 +6,10 @@ environment prefix, and is not this package itself (even when vendored). The
 detection is generic and makes no assumption about the project layout: it
 relies only on each ``AppConfig`` filesystem ``path``.
 
-Both the imports check (which modules to import eagerly) and the migrations
-probe (which apps to reverse on the throwaway database) rely on this logic, so
-it lives in a single place to stay consistent.
+Every check that tells project code from dependencies (apps, view modules,
+template directories) and the migrations probe (which apps to reverse on the
+throwaway database) rely on this logic, so it lives in a single place to stay
+consistent.
 """
 
 from __future__ import annotations
@@ -117,15 +118,23 @@ def is_test_support_model(model: type[Model]) -> bool:
     return _TESTS_MODULE_RE.search(module) is not None
 
 
-def is_project_app(app_config: AppConfig) -> bool:
-    """Return ``True`` when the app belongs to the project under inspection."""
-    path = app_config.path
-    if not path:
-        return False
+def is_project_path(path: str) -> bool:
+    """Return ``True`` when ``path`` belongs to the project under inspection.
+
+    A path is external when it lives in this package (even when vendored) or
+    under the interpreter's ``site-packages``, standard library or
+    environment prefix.
+    """
     real_path = os.path.realpath(path)
     if is_within(real_path, own_package_dir()):
         return False
     return not any(is_within(real_path, prefix) for prefix in external_prefixes())
+
+
+def is_project_app(app_config: AppConfig) -> bool:
+    """Return ``True`` when the app belongs to the project under inspection."""
+    path = app_config.path
+    return bool(path) and is_project_path(path)
 
 
 def project_app_configs() -> Iterator[AppConfig]:

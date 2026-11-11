@@ -20,11 +20,7 @@ from typing import TYPE_CHECKING
 from django.template import TemplateSyntaxError, engines
 from django.template.backends.django import DjangoTemplates
 
-from pytest_django_autocheck.checks.shared.scope import (
-    external_prefixes,
-    is_within,
-    own_package_dir,
-)
+from pytest_django_autocheck.checks.shared.scope import is_project_path
 from pytest_django_autocheck.registry import BaseCheck, Finding
 
 if TYPE_CHECKING:
@@ -87,7 +83,7 @@ class TemplatesCheck(BaseCheck):
             if real in seen:
                 continue
             seen.add(real)
-            if self._is_project_dir(real):
+            if is_project_path(real):
                 dirs.append(directory)
         return dirs
 
@@ -102,12 +98,6 @@ class TemplatesCheck(BaseCheck):
             if get_dirs is not None:
                 dirs.extend(os.fspath(path) for path in get_dirs())
         return dirs
-
-    @staticmethod
-    def _is_project_dir(real_dir: str) -> bool:
-        if is_within(real_dir, own_package_dir()):
-            return False
-        return not any(is_within(real_dir, prefix) for prefix in external_prefixes())
 
     @staticmethod
     def _walk_dir(directory: str) -> Iterator[str]:

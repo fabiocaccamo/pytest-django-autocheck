@@ -34,7 +34,6 @@ reported as a WARNING because it means the view was never exercised.
 from __future__ import annotations
 
 import inspect
-import os
 from typing import TYPE_CHECKING
 
 from django.db import transaction
@@ -43,11 +42,7 @@ from django.urls import get_resolver, reverse
 from django.urls.resolvers import URLResolver
 
 from pytest_django_autocheck.checks.shared.http import same_path_redirect
-from pytest_django_autocheck.checks.shared.scope import (
-    external_prefixes,
-    is_within,
-    own_package_dir,
-)
+from pytest_django_autocheck.checks.shared.scope import is_project_path
 from pytest_django_autocheck.registry import BaseCheck, Finding
 
 if TYPE_CHECKING:
@@ -109,10 +104,7 @@ class ViewsCheck(BaseCheck):
         filename = getattr(module, "__file__", None)
         if filename is None:
             return True
-        real = os.path.realpath(filename)
-        if is_within(real, own_package_dir()):
-            return False
-        return not any(is_within(real, prefix) for prefix in external_prefixes())
+        return is_project_path(filename)
 
     def _check_view(self, client: Client, name: str, seen: set[str]) -> list[Finding]:
         try:

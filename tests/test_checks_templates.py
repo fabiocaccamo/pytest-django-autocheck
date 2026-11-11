@@ -6,6 +6,7 @@ import types
 from django.template import TemplateSyntaxError, engines
 
 from pytest_django_autocheck.checks import templates as templates_module
+from pytest_django_autocheck.checks.shared import scope
 from pytest_django_autocheck.checks.templates import TemplatesCheck
 
 
@@ -62,16 +63,14 @@ def test_non_django_backend_is_skipped(monkeypatch) -> None:
     assert list(check._iter_templates()) == []
 
 
-def test_external_dir_is_not_a_project_dir() -> None:
-    external = os.path.join(
-        templates_module.external_prefixes()[0], "somepkg", "templates"
+def test_project_dirs_skips_external_and_own_package_dirs(monkeypatch) -> None:
+    external = os.path.join(scope.external_prefixes()[0], "somepkg", "templates")
+    check = TemplatesCheck()
+    monkeypatch.setattr(
+        check, "_loader_dirs", lambda loaders: [external, scope.own_package_dir()]
     )
-    assert TemplatesCheck._is_project_dir(external) is False
-
-
-def test_own_package_dir_is_not_a_project_dir() -> None:
-    own = templates_module.own_package_dir()
-    assert TemplatesCheck._is_project_dir(own) is False
+    engine = types.SimpleNamespace(template_loaders=[])
+    assert check._project_dirs(engine) == []
 
 
 def test_loader_dirs_recurses_into_cached_loaders() -> None:
@@ -110,9 +109,7 @@ def test_project_dirs_deduplicates_directories(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(
         check, "_loader_dirs", lambda loaders: [str(directory), str(directory)]
     )
-    monkeypatch.setattr(
-        TemplatesCheck, "_is_project_dir", staticmethod(lambda real: True)
-    )
+    monkeypatch.setattr(templates_module, "is_project_path", lambda path: True)
     engine = types.SimpleNamespace(template_loaders=[])
     assert check._project_dirs(engine) == [str(directory)]
 

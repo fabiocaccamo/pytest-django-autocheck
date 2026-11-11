@@ -124,6 +124,20 @@ def test_is_project_app_false_for_vendored_subdir() -> None:
     assert scope.is_project_app(FakeConfig()) is False
 
 
+def test_is_project_path_true_for_project_file() -> None:
+    assert scope.is_project_path(__file__) is True
+
+
+def test_is_project_path_false_under_external_prefixes() -> None:
+    for prefix in scope.external_prefixes():
+        assert scope.is_project_path(os.path.join(prefix, "somepkg")) is False
+
+
+def test_is_project_path_false_for_own_package() -> None:
+    assert scope.is_project_path(scope.own_package_dir()) is False
+    assert scope.is_project_path(scope.__file__) is False
+
+
 def test_own_package_dir_points_at_package_root() -> None:
     expected = os.path.dirname(
         os.path.dirname(os.path.dirname(os.path.realpath(scope.__file__)))
