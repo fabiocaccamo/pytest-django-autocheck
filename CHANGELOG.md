@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+-   Always destroy the migration probe's throwaway database, also when a forward migration fails or times out (it used to leave one database behind per run).
+-   Skip the dynamic migration check with a `WARNING` on projects configuring more than one database: only `default` can be isolated, so a data migration routed to another alias would have reached its real database.
+-   Fix a false `ERROR` in the dynamic migration check on projects setting `TEST["MIGRATE"] = False`.
+-   Remove the `runpy` `RuntimeWarning` from the dynamic migration findings.
+-   Fix the `imports` check registering duplicate models for an app nested inside another installed app, which then failed the `models` check.
+-   Import packages made of their `__init__.py` alone in the `imports` check.
+-   Make `--autocheck-only` and `--autocheck-skip` imply `--autocheck`: given alone they were silently ignored.
+-   Report unknown check names and missing Django settings as usage errors instead of an `INTERNALERROR`.
+-   Report a `forms`/`serializers` module that fails to import instead of skipping it as if it were missing; a broken project `factories` module now raises instead of silently falling back to generated data.
+-   Discover `factory_boy` factories in project apps only.
+-   Support admin sites with a custom name in the `admin` check (the `admin` namespace was hardcoded).
+-   Raise `ImproperlyConfigured` in the `admin` check when `MODELS_EXCLUDE` or `MODELS_FACTORIES` is misconfigured, instead of reporting a failed superuser setup.
+-   Report any exception raised while compiling a template, per template, instead of aborting the `templates` check.
+-   Reject a check registered under a name that is already taken, and raise a broken check entry point again on the next load instead of skipping it.
+-   Emit a warning when no project app is detected, since the checks scoped to project apps would otherwise pass without inspecting anything.
+-   Report the configured limit (not the padded one) when the migration probe times out.
+
 ## [0.3.0](https://github.com/fabiocaccamo/pytest-django-autocheck/releases/tag/0.3.0) - 2026-08-30
 -   Classify a failure while creating the migration probe's throwaway database by its traceback: environment problems (e.g. the database user lacks the CREATEDB privilege) are now reported as `WARNING` instead of a false `ERROR`; broken migrations still fail the run.
 -   Register an `always` filter for `AutocheckWarning` so projects running with `filterwarnings = ["error"]` no longer turn `WARNING`/`INFO` findings into failures.
