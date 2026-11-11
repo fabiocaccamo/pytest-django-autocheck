@@ -155,20 +155,28 @@ def main() -> int:
     base_name = test_settings.get("NAME") or connection.settings_dict.get("NAME")
     test_settings["NAME"] = isolated_test_name(base_name, str(os.getpid()))
 
+    original_name = connection.settings_dict.get("NAME")
     armed = _arm_deadline()
     try:
-        old_config = connection.creation.create_test_db(
+        return _verify_migrations(connection)
+    finally:
+        _cancel_deadline(armed)
+        _destroy_throwaway_database(connection, original_name)
+
+
+def _verify_migrations(connection: BaseDatabaseWrapper) -> int:
+    """Create the throwaway database, run the cycle and return the exit code."""
+    try:
+        connection.creation.create_test_db(
             verbosity=0, autoclobber=True, serialize=False
         )
     except _ProbeTimeout:
-        _cancel_deadline(armed)
         print(
             "timed out before the throwaway database was ready",
             file=sys.stderr,
         )
         return EXIT_SETUP_ERROR
     except Exception as exc:  # noqa: BLE001
-        _cancel_deadline(armed)
         print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
         if _is_migration_failure(exc):
             return EXIT_MIGRATION_ERROR
@@ -178,20 +186,34 @@ def main() -> int:
         run_cycle(connection)
     except _ProbeTimeout:
         print("timed out while verifying migrations", file=sys.stderr)
-        result = EXIT_SETUP_ERROR
+        return EXIT_SETUP_ERROR
     except Exception as exc:  # noqa: BLE001
         print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
-        result = EXIT_MIGRATION_ERROR
-    else:
-        result = EXIT_OK
-    finally:
-        _cancel_deadline(armed)
-        try:
-            connection.creation.destroy_test_db(old_config, verbosity=0)
-        except Exception:  # noqa: BLE001
-            pass
+        return EXIT_MIGRATION_ERROR
+    return EXIT_OK
 
-    return result
+
+def _destroy_throwaway_database(
+    connection: BaseDatabaseWrapper, original_name: str | None
+) -> None:
+    """Destroy the throwaway database, if it was created.
+
+    ``create_test_db`` points the connection at the throwaway database only
+    once it exists, and migrates it afterwards: a failing or timed out
+    migration therefore leaves it behind. While the name is unchanged there
+    is nothing to destroy, and destroying would target the project's own
+    database.
+    """
+    if connection.settings_dict.get("NAME") == original_name:
+        return
+    try:
+        connection.creation.destroy_test_db(original_name, verbosity=0)
+    except Exception as exc:  # noqa: BLE001
+        print(
+            "could not destroy the throwaway database "
+            f"({type(exc).__name__}: {exc})",
+            file=sys.stderr,
+        )
 
 
 if __name__ == "__main__":  # pragma: no cover

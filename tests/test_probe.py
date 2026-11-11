@@ -1,5 +1,8 @@
 """Tests for the out-of-process migration probe."""
 
+import os
+import subprocess
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -80,6 +83,25 @@ def test_run_cycle_reverses_nothing_without_project_apps() -> None:
     assert forward_call.args[0] == [("auth", "0001")]
 
 
+_THROWAWAY_NAME = "throwaway"
+
+
+def _fake_connection(name: str) -> MagicMock:
+    """Build a connection whose ``create_test_db`` behaves like Django's.
+
+    Django points the connection at the test database once it exists, which
+    is what tells the probe that there is something to destroy.
+    """
+    connection = MagicMock()
+    connection.settings_dict = {"NAME": name, "TEST": {}}
+
+    def create_test_db(**kwargs):
+        connection.settings_dict["NAME"] = _THROWAWAY_NAME
+
+    connection.creation.create_test_db.side_effect = create_test_db
+    return connection
+
+
 def _patch_django(connection: MagicMock):
     django_module = MagicMock()
     db_module = MagicMock()
@@ -98,33 +120,37 @@ def test_main_returns_setup_error_when_django_setup_fails() -> None:
 
 
 def test_main_returns_ok_on_success() -> None:
-    connection = MagicMock()
-    connection.settings_dict = {"NAME": ":memory:", "TEST": {}}
+    connection = _fake_connection(":memory:")
     with _patch_django(connection), patch.object(probe, "run_cycle"):
         assert probe.main() == probe.EXIT_OK
     connection.creation.create_test_db.assert_called_once()
-    connection.creation.destroy_test_db.assert_called_once()
+    connection.creation.destroy_test_db.assert_called_once_with(":memory:", verbosity=0)
 
 
 def test_main_returns_setup_error_when_create_fails_outside_migrations() -> None:
-    connection = MagicMock()
-    connection.settings_dict = {"NAME": ":memory:", "TEST": {}}
+    connection = _fake_connection("db")
     connection.creation.create_test_db.side_effect = RuntimeError("permission denied")
     with _patch_django(connection):
         assert probe.main() == probe.EXIT_SETUP_ERROR
+    # The database was never created: the connection still targets the
+    # project's own database, which must never be destroyed.
+    connection.creation.destroy_test_db.assert_not_called()
 
 
 def test_main_returns_migration_error_when_create_fails_in_migrations() -> None:
+    connection = _fake_connection("db")
+
     def broken_migration(*args, **kwargs):
         from django.db.migrations.operations import RunPython
 
+        connection.settings_dict["NAME"] = _THROWAWAY_NAME
         RunPython("not a callable")
 
-    connection = MagicMock()
-    connection.settings_dict = {"NAME": ":memory:", "TEST": {}}
     connection.creation.create_test_db.side_effect = broken_migration
     with _patch_django(connection):
         assert probe.main() == probe.EXIT_MIGRATION_ERROR
+    # The database exists by the time its migrations fail: it must not leak.
+    connection.creation.destroy_test_db.assert_called_once_with("db", verbosity=0)
 
 
 def test_is_migration_failure_true_for_migrations_frames() -> None:
@@ -144,8 +170,7 @@ def test_is_migration_failure_false_for_other_frames() -> None:
 
 
 def test_main_returns_migration_error_when_cycle_fails() -> None:
-    connection = MagicMock()
-    connection.settings_dict = {"NAME": "db", "TEST": {}}
+    connection = _fake_connection("db")
     with (
         _patch_django(connection),
         patch.object(probe, "run_cycle", side_effect=RuntimeError("irreversible")),
@@ -154,12 +179,12 @@ def test_main_returns_migration_error_when_cycle_fails() -> None:
     connection.creation.destroy_test_db.assert_called_once()
 
 
-def test_main_swallows_teardown_failure() -> None:
-    connection = MagicMock()
-    connection.settings_dict = {"NAME": "db", "TEST": {}}
+def test_main_reports_teardown_failure_without_changing_the_result(capsys) -> None:
+    connection = _fake_connection("db")
     connection.creation.destroy_test_db.side_effect = RuntimeError("late")
     with _patch_django(connection), patch.object(probe, "run_cycle"):
         assert probe.main() == probe.EXIT_OK
+    assert "RuntimeError: late" in capsys.readouterr().err
 
 
 def test_raise_probe_timeout_raises() -> None:
@@ -202,17 +227,32 @@ def test_arm_deadline_returns_false_without_sigalrm(monkeypatch) -> None:
 
 def test_main_returns_setup_error_on_create_timeout(monkeypatch) -> None:
     monkeypatch.delenv(probe.PROBE_DEADLINE_ENV, raising=False)
-    connection = MagicMock()
-    connection.settings_dict = {"NAME": ":memory:", "TEST": {}}
+    connection = _fake_connection(":memory:")
     connection.creation.create_test_db.side_effect = probe._ProbeTimeout()
     with _patch_django(connection):
         assert probe.main() == probe.EXIT_SETUP_ERROR
+    connection.creation.destroy_test_db.assert_not_called()
+
+
+def test_main_destroys_the_database_when_its_migrations_time_out(
+    monkeypatch,
+) -> None:
+    monkeypatch.delenv(probe.PROBE_DEADLINE_ENV, raising=False)
+    connection = _fake_connection("db")
+
+    def slow_migration(**kwargs):
+        connection.settings_dict["NAME"] = _THROWAWAY_NAME
+        raise probe._ProbeTimeout
+
+    connection.creation.create_test_db.side_effect = slow_migration
+    with _patch_django(connection):
+        assert probe.main() == probe.EXIT_SETUP_ERROR
+    connection.creation.destroy_test_db.assert_called_once_with("db", verbosity=0)
 
 
 def test_main_returns_setup_error_on_cycle_timeout(monkeypatch) -> None:
     monkeypatch.delenv(probe.PROBE_DEADLINE_ENV, raising=False)
-    connection = MagicMock()
-    connection.settings_dict = {"NAME": "db", "TEST": {}}
+    connection = _fake_connection("db")
     with (
         _patch_django(connection),
         patch.object(probe, "run_cycle", side_effect=probe._ProbeTimeout()),
@@ -224,8 +264,125 @@ def test_main_returns_setup_error_on_cycle_timeout(monkeypatch) -> None:
 def test_main_cancels_deadline_on_success(monkeypatch) -> None:
     monkeypatch.setenv(probe.PROBE_DEADLINE_ENV, "300")
     _, alarm_calls = _fake_sigalrm(monkeypatch)
-    connection = MagicMock()
-    connection.settings_dict = {"NAME": ":memory:", "TEST": {}}
+    connection = _fake_connection(":memory:")
     with _patch_django(connection), patch.object(probe, "run_cycle"):
         assert probe.main() == probe.EXIT_OK
     assert alarm_calls == [300, 0]
+
+
+_PROJECT_SETTINGS = """
+from pathlib import Path
+
+SECRET_KEY = "probe-project"
+DATABASES = {{
+    "default": {{
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": str(Path(__file__).parent / "db.sqlite3"),
+        {default_options}
+    }},
+    {extra_databases}
+}}
+INSTALLED_APPS = ["django.contrib.contenttypes", "probe_app"]
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+USE_TZ = True
+"""
+
+_INITIAL_MIGRATION = """
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+    initial = True
+    dependencies = []
+    operations = [
+        migrations.CreateModel(
+            name="Thing",
+            fields=[
+                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                ("name", models.CharField(max_length=50)),
+            ],
+        ),
+    ]
+"""
+
+_BROKEN_MIGRATION = """
+from django.db import migrations
+
+
+def forward(apps, schema_editor):
+    raise RuntimeError("boom in data migration")
+
+
+class Migration(migrations.Migration):
+    dependencies = [("probe_app", "0001_initial")]
+    operations = [migrations.RunPython(forward, migrations.RunPython.noop)]
+"""
+
+_MODELS = """
+from django.db import models
+
+
+class Thing(models.Model):
+    name = models.CharField(max_length=50)
+"""
+
+
+def _run_probe_on_project(
+    tmp_path,
+    *,
+    broken_migration: bool = False,
+    default_options: str = "",
+    extra_databases: str = "",
+) -> subprocess.CompletedProcess:
+    """Run the real probe, in a subprocess, on a throwaway Django project."""
+    app_dir = tmp_path / "probe_app"
+    migrations_dir = app_dir / "migrations"
+    migrations_dir.mkdir(parents=True)
+    (tmp_path / "probe_settings.py").write_text(
+        _PROJECT_SETTINGS.format(
+            default_options=default_options, extra_databases=extra_databases
+        ),
+        encoding="utf-8",
+    )
+    (app_dir / "__init__.py").write_text("", encoding="utf-8")
+    (app_dir / "models.py").write_text(_MODELS, encoding="utf-8")
+    (migrations_dir / "__init__.py").write_text("", encoding="utf-8")
+    (migrations_dir / "0001_initial.py").write_text(
+        _INITIAL_MIGRATION, encoding="utf-8"
+    )
+    if broken_migration:
+        (migrations_dir / "0002_broken.py").write_text(
+            _BROKEN_MIGRATION, encoding="utf-8"
+        )
+    env = dict(os.environ)
+    env["DJANGO_SETTINGS_MODULE"] = "probe_settings"
+    env["PYTHONPATH"] = os.pathsep.join(
+        [str(tmp_path), *(entry for entry in sys.path if entry)]
+    )
+    env.pop(probe.PROBE_DEADLINE_ENV, None)
+    return subprocess.run(  # noqa: S603
+        [sys.executable, "-m", "pytest_django_autocheck.checks.probe"],
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+
+
+def _leftover_databases(tmp_path) -> list[str]:
+    return sorted(path.name for path in tmp_path.glob("db.sqlite3*"))
+
+
+def test_probe_succeeds_and_leaves_no_database_behind(tmp_path) -> None:
+    result = _run_probe_on_project(tmp_path)
+    assert result.returncode == probe.EXIT_OK, result.stderr
+    assert _leftover_databases(tmp_path) == []
+
+
+def test_probe_destroys_the_database_when_a_forward_migration_fails(
+    tmp_path,
+) -> None:
+    result = _run_probe_on_project(tmp_path, broken_migration=True)
+    assert result.returncode == probe.EXIT_MIGRATION_ERROR
+    assert "boom in data migration" in result.stderr
+    assert _leftover_databases(tmp_path) == []
