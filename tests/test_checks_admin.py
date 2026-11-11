@@ -44,6 +44,20 @@ def test_run_skips_when_no_models_registered() -> None:
     assert check.run(None) == []
 
 
+def test_run_uses_the_namespace_of_a_custom_admin_site(settings) -> None:
+    from django.contrib.admin import AdminSite
+    from django.urls import path
+
+    backoffice = AdminSite(name="backoffice")
+    backoffice.register(Author)
+    urlconf = types.ModuleType("autocheck_backoffice_urls")
+    urlconf.urlpatterns = [path("backoffice/", backoffice.urls)]
+    settings.ROOT_URLCONF = urlconf
+
+    check = AdminCheck(site=backoffice)
+    assert check.run(_exampleapp()) == []
+
+
 def test_run_skips_admins_for_third_party_models() -> None:
     from django.contrib.admin import AdminSite
     from django.contrib.auth.models import Group

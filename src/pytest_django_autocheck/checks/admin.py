@@ -14,9 +14,10 @@ in two layers:
    404/500 response or raised exception is reported.
 
 The check is generic: the superuser is built with the project's own user model
-through the shared generator, admin URLs are resolved by reverse(), and no
-assumption is made about the project under inspection. The admin site is
-injectable for testability and defaults to ``django.contrib.admin.site``.
+through the shared generator, admin URLs are resolved by reverse() in the
+site's own namespace, and no assumption is made about the project under
+inspection. The admin site is injectable for testability and defaults to
+``django.contrib.admin.site``.
 Admins registered for models defined inside a ``tests`` package (a top-level
 ``tests/`` or an app-level ``{app}/tests/``) are skipped: those are support
 models for the project's own test suite, not production models.
@@ -79,8 +80,12 @@ class AdminCheck(BaseCheck):
     def __init__(self, site: AdminSite | None = None) -> None:
         self._site = site
 
+    @property
+    def _admin_site(self) -> AdminSite:
+        return self._site or admin.site
+
     def run(self, app_configs: Sequence[AppConfig] | None) -> list[Finding]:
-        site = self._site or admin.site
+        site = self._admin_site
         if not site._registry:
             return []
         allowed = inspected_labels(app_configs)
@@ -238,7 +243,7 @@ class AdminCheck(BaseCheck):
         target: str,
     ) -> list[Finding]:
         app_label, model_name = info
-        url_name = f"admin:{app_label}_{model_name}_{view}"
+        url_name = f"{self._admin_site.name}:{app_label}_{model_name}_{view}"
         try:
             url = reverse(url_name, args=args)
         except NoReverseMatch as exc:
