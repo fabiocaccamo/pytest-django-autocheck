@@ -39,7 +39,7 @@ from pytest_django_autocheck.checks.shared.scope import (
 from pytest_django_autocheck.registry import BaseCheck, Finding
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Sequence
+    from collections.abc import Callable, Iterator, Sequence
 
     from django.apps.config import AppConfig
     from django.db.models import Model
@@ -86,33 +86,27 @@ class ModelsCheck(BaseCheck):
                     )
                 )
                 continue
-            try:
-                with transaction.atomic():
-                    str(instance)
-            except Exception as exc:  # noqa: BLE001 - reported as a finding
-                findings.append(
-                    Finding(
-                        self.name,
-                        "ERROR",
-                        target,
-                        f"str() raised an exception: {exc}",
-                        exc,
-                    )
-                )
-            try:
-                with transaction.atomic():
-                    repr(instance)
-            except Exception as exc:  # noqa: BLE001 - reported as a finding
-                findings.append(
-                    Finding(
-                        self.name,
-                        "ERROR",
-                        target,
-                        f"repr() raised an exception: {exc}",
-                        exc,
-                    )
-                )
+            for represent in (str, repr):
+                findings.extend(self._check_representation(instance, represent, target))
         return findings
+
+    def _check_representation(
+        self, instance: Model, represent: Callable[[Model], str], target: str
+    ) -> list[Finding]:
+        try:
+            with transaction.atomic():
+                represent(instance)
+        except Exception as exc:  # noqa: BLE001 - reported as a finding
+            return [
+                Finding(
+                    self.name,
+                    "ERROR",
+                    target,
+                    f"{represent.__name__}() raised an exception: {exc}",
+                    exc,
+                )
+            ]
+        return []
 
     @staticmethod
     def _iter_models(

@@ -131,7 +131,7 @@ def test_str_failure_is_reported(monkeypatch) -> None:
     findings = check.run(_exampleapp())
     assert findings
     assert all(f.severity == "ERROR" for f in findings)
-    assert "bad str" in findings[0].message
+    assert "str() raised an exception: bad str" in findings[0].message
 
 
 def test_repr_failure_is_reported(monkeypatch) -> None:
@@ -144,4 +144,4 @@ def test_repr_failure_is_reported(monkeypatch) -> None:
     findings = check.run(_exampleapp())
     assert findings
     assert all(f.severity == "ERROR" for f in findings)
-    assert any("bad repr" in f.message for f in findings)
+    assert any("repr() raised an exception: bad repr" in f.message for f in findings)
