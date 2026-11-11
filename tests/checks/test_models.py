@@ -70,7 +70,7 @@ def test_excluded_models_are_reported_as_info_and_never_built(monkeypatch) -> No
 @override_settings(
     PYTEST_DJANGO_AUTOCHECK_MODELS_EXCLUDE=["exampleapp.Author"],
     PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES={
-        "exampleapp.Author": "tests.test_checks_models.make_saved_author",
+        "exampleapp.Author": "tests.checks.test_models.make_saved_author",
     },
 )
 def test_configured_factory_wins_over_exclusion() -> None:

@@ -60,7 +60,7 @@ def test_make_instance_uses_project_factory() -> None:
 @pytest.mark.django_db
 @override_settings(
     PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES={
-        "ExampleApp.Author": "tests.test_builders.make_saved_author",
+        "ExampleApp.Author": "tests.checks.shared.test_builders.make_saved_author",
     }
 )
 def test_make_instance_prefers_configured_factory() -> None:
@@ -72,7 +72,7 @@ def test_make_instance_prefers_configured_factory() -> None:
 
 @override_settings(
     PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES={
-        "exampleapp.Author": "tests.test_builders.make_unsaved_author",
+        "exampleapp.Author": "tests.checks.shared.test_builders.make_unsaved_author",
     }
 )
 def test_configured_factory_returning_unsaved_instance_raises() -> None:
@@ -82,7 +82,7 @@ def test_configured_factory_returning_unsaved_instance_raises() -> None:
 
 @override_settings(
     PYTEST_DJANGO_AUTOCHECK_MODELS_FACTORIES={
-        "exampleapp.Author": "tests.test_builders.make_wrong_type",
+        "exampleapp.Author": "tests.checks.shared.test_builders.make_wrong_type",
     }
 )
 def test_configured_factory_returning_wrong_type_raises() -> None:
