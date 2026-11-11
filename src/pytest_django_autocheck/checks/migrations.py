@@ -42,6 +42,7 @@ from django.db.migrations.state import ProjectState
 from pytest_django_autocheck.checks.probe import (
     EXIT_OK,
     EXIT_SETUP_ERROR,
+    PROBE_COMMAND,
     PROBE_DEADLINE_ENV,
 )
 from pytest_django_autocheck.checks.shared.scope import inspected_labels
@@ -116,8 +117,6 @@ class MigrationsCheck(BaseCheck):
             f"'makemigrations {app_label}' ({summary}).",
         )
 
-    _PROBE_MODULE = "pytest_django_autocheck.checks.probe"
-
     def _inspect_database(self) -> list[Finding]:
         env = self._subprocess_env()
         if env is None:
@@ -135,7 +134,7 @@ class MigrationsCheck(BaseCheck):
         env[PROBE_DEADLINE_ENV] = str(timeout)
         try:
             result = subprocess.run(  # noqa: S603
-                [sys.executable, "-m", self._PROBE_MODULE],
+                [sys.executable, "-c", PROBE_COMMAND],
                 capture_output=True,
                 text=True,
                 check=False,

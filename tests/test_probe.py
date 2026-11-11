@@ -361,7 +361,7 @@ def _run_probe_on_project(
     )
     env.pop(probe.PROBE_DEADLINE_ENV, None)
     return subprocess.run(  # noqa: S603
-        [sys.executable, "-m", "pytest_django_autocheck.checks.probe"],
+        [sys.executable, "-c", probe.PROBE_COMMAND],
         capture_output=True,
         text=True,
         check=False,
@@ -376,6 +376,9 @@ def _leftover_databases(tmp_path) -> list[str]:
 def test_probe_succeeds_and_leaves_no_database_behind(tmp_path) -> None:
     result = _run_probe_on_project(tmp_path)
     assert result.returncode == probe.EXIT_OK, result.stderr
+    # Whatever the probe writes to stderr ends up in the findings: a clean
+    # run must be silent (no interpreter warning about how it was launched).
+    assert result.stderr == ""
     assert _leftover_databases(tmp_path) == []
 
 

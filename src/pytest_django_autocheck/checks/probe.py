@@ -1,7 +1,7 @@
 """Out-of-process probe that verifies migrations on a throwaway database.
 
 This module is meant to be executed as a subprocess by the migrations check
-(``python -m pytest_django_autocheck.checks.probe``). Running it in a separate
+(``python -c`` followed by :data:`PROBE_COMMAND`). Running it in a separate
 process is what makes the dynamic verification possible: the parent pytest
 process installs pytest-django's database blocker, which forbids any real
 connection; a fresh interpreter has no such blocker and is free to create its
@@ -50,6 +50,14 @@ EXIT_MIGRATION_ERROR = 1
 EXIT_SETUP_ERROR = 2
 
 _TEST_NAME_SUFFIX = "_autocheck"
+
+# Code the parent passes to ``python -c``. The probe is not run with ``-m``:
+# importing the ``checks`` package already imports this module, and runpy
+# warns on stderr (which ends up in the findings) when asked to run a module
+# that is already imported.
+PROBE_COMMAND = (
+    "from pytest_django_autocheck.checks.probe import main; raise SystemExit(main())"
+)
 
 # Seconds the probe is allowed to run before it aborts itself; set by the
 # parent so the probe can tear down its throwaway database in a ``finally``
@@ -232,7 +240,3 @@ def _destroy_throwaway_database(
             f"({type(exc).__name__}: {exc})",
             file=sys.stderr,
         )
-
-
-if __name__ == "__main__":  # pragma: no cover
-    raise SystemExit(main())
