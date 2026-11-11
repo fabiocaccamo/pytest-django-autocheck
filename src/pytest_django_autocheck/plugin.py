@@ -22,9 +22,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from django.core.exceptions import ImproperlyConfigured
 
 from pytest_django_autocheck.output.text import format_text
-from pytest_django_autocheck.runner import get_checks
+from pytest_django_autocheck.runner import UnknownCheckError, get_checks
 
 if TYPE_CHECKING:
     from pytest_django_autocheck.registry import Check
@@ -156,7 +157,13 @@ def pytest_collection_modifyitems(
         return
     only = config.option.autocheck_only or None
     skip = config.option.autocheck_skip or None
-    items.extend(_build_item(session, check) for check in get_checks(only, skip))
+    try:
+        checks = get_checks(only, skip)
+    except (UnknownCheckError, ImproperlyConfigured) as error:
+        # A mistyped check name or missing Django settings are usage errors:
+        # report the message alone instead of an internal error traceback.
+        raise pytest.UsageError(str(error)) from error
+    items.extend(_build_item(session, check) for check in checks)
 
 
 def _is_autocheck_requested(config: pytest.Config) -> bool:

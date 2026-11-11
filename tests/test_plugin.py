@@ -5,6 +5,7 @@ import types
 
 import pytest
 from _pytest.outcomes import Failed
+from django.core.exceptions import ImproperlyConfigured
 
 from pytest_django_autocheck import __version__, plugin
 from pytest_django_autocheck.registry import Finding
@@ -62,6 +63,30 @@ def test_modifyitems_runs_when_only_or_skip_is_given_without_autocheck(
     items: list[object] = []
     plugin.pytest_collection_modifyitems(session="session", config=config, items=items)
     assert items == expected
+
+
+def test_modifyitems_reports_unknown_check_names_as_usage_errors() -> None:
+    config = types.SimpleNamespace(
+        option=types.SimpleNamespace(
+            autocheck=True, autocheck_only=["admins"], autocheck_skip=[]
+        )
+    )
+    with pytest.raises(pytest.UsageError, match="unknown autocheck only.*admins"):
+        plugin.pytest_collection_modifyitems(session="session", config=config, items=[])
+
+
+def test_modifyitems_reports_missing_settings_as_usage_errors(monkeypatch) -> None:
+    def unconfigured(only, skip):
+        raise ImproperlyConfigured("settings are not configured")
+
+    config = types.SimpleNamespace(
+        option=types.SimpleNamespace(
+            autocheck=True, autocheck_only=[], autocheck_skip=[]
+        )
+    )
+    monkeypatch.setattr(plugin, "get_checks", unconfigured)
+    with pytest.raises(pytest.UsageError, match="settings are not configured"):
+        plugin.pytest_collection_modifyitems(session="session", config=config, items=[])
 
 
 def test_skip_alone_implies_autocheck() -> None:

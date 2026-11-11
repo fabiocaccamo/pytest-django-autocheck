@@ -22,6 +22,10 @@ if TYPE_CHECKING:
     from pytest_django_autocheck.registry import Check
 
 
+class UnknownCheckError(ValueError):
+    """Raised when a requested check name is not registered."""
+
+
 def get_checks(
     only: Sequence[str] | None = None,
     skip: Sequence[str] | None = None,
@@ -63,7 +67,7 @@ def _validate_names(names: Sequence[str] | None, known: set[str], label: str) ->
         return
     unknown = sorted(set(names) - known)
     if unknown:
-        raise ValueError(
+        raise UnknownCheckError(
             f"unknown autocheck {label} name(s): {', '.join(unknown)}; "
             f"valid names are: {', '.join(sorted(known))}."
         )
