@@ -4,7 +4,8 @@ A template syntax error (a typo in a tag, an unknown ``{% load %}``) is only
 raised when the template is rendered, so it can reach production untested. This
 check enumerates the template files owned by the project (the explicit
 ``DIRS`` and the ``templates`` directory of every project app) and compiles
-each one through its engine, surfacing syntax errors at test time.
+each one through its engine, surfacing syntax errors (and any other exception
+a custom tag raises while compiling) at test time.
 
 Only the Django template backend is inspected, and only project-owned
 directories: templates shipped by Django itself or by third-party apps (under
@@ -61,6 +62,18 @@ class TemplatesCheck(BaseCheck):
             # templates directory is not a template; skip it instead of
             # crashing the check on an undecodable file.
             return []
+        except Exception as error:  # noqa: BLE001 - reported as a finding
+            # A custom tag whose parser raises anything else must not abort
+            # the check and hide the findings of every other template.
+            return [
+                Finding(
+                    self.name,
+                    "ERROR",
+                    name,
+                    f"template could not be compiled: {type(error).__name__}: {error}",
+                    error,
+                )
+            ]
         return []
 
     def _iter_templates(self) -> Iterator[tuple[DjangoTemplates, str]]:

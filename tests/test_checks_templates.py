@@ -57,6 +57,26 @@ def test_binary_file_is_skipped() -> None:
     assert check._check_template(BinaryBackend(), "favicon.ico") == []
 
 
+def test_unexpected_compile_error_is_reported_per_template(monkeypatch) -> None:
+    class BuggyTagBackend:
+        def get_template(self, name):
+            if name == "buggy.html":
+                raise KeyError("missing tag argument")
+
+    check = TemplatesCheck()
+    backend = BuggyTagBackend()
+    monkeypatch.setattr(
+        check,
+        "_iter_templates",
+        lambda: [(backend, "buggy.html"), (backend, "fine.html")],
+    )
+    findings = check.run(None)
+    assert len(findings) == 1
+    assert findings[0].severity == "ERROR"
+    assert findings[0].target == "buggy.html"
+    assert "template could not be compiled: KeyError" in findings[0].message
+
+
 def test_non_django_backend_is_skipped(monkeypatch) -> None:
     monkeypatch.setattr(templates_module.engines, "all", lambda: [object()])
     check = TemplatesCheck()
