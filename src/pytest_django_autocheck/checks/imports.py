@@ -18,6 +18,8 @@ circular imports are reported with a dedicated message.
 This package itself is always excluded, even when it is vendored (copied into
 the project instead of installed via pip): its own directory is detected by
 path and pruned from the walk, so the check never imports its own modules.
+An installed app nested inside another one is pruned from the outer walk too:
+it is imported once, under its own dotted name.
 """
 
 from __future__ import annotations
@@ -94,16 +96,16 @@ class ImportsCheck(BaseCheck):
     def _iter_app_modules(app_config: AppConfig) -> Iterator[str]:
         base_path = app_config.path
         base_name = app_config.name
-        own = own_package_dir()
+        pruned = ImportsCheck._pruned_dirs(app_config)
         for root, dirs, files in os.walk(base_path):
             # Hidden directories (.venv, .git, .tox) and node_modules can
             # contain .py files that are not the app's own modules.
             dirs[:] = [
-                d
-                for d in dirs
-                if d not in _SKIP_DIRS
-                and not d.startswith(".")
-                and os.path.realpath(os.path.join(root, d)) != own
+                directory
+                for directory in dirs
+                if directory not in _SKIP_DIRS
+                and not directory.startswith(".")
+                and os.path.realpath(os.path.join(root, directory)) not in pruned
             ]
             prefix = ImportsCheck._module_prefix(base_name, base_path, root)
             for file in files:
@@ -111,6 +113,22 @@ class ImportsCheck(BaseCheck):
                     continue
                 name = file[:-3]
                 yield f"{prefix}.{name}" if prefix else name
+
+    @staticmethod
+    def _pruned_dirs(app_config: AppConfig) -> set[str]:
+        """Return the directories the walk of ``app_config`` must not enter.
+
+        Besides this package itself, every other installed app nested inside
+        this one is pruned: it is walked on its own, under its own dotted
+        name, and importing its modules a second time under this app's name
+        would register its models twice.
+        """
+        nested_apps = {
+            os.path.realpath(other.path)
+            for other in apps.get_app_configs()
+            if other is not app_config
+        }
+        return {own_package_dir(), *nested_apps}
 
     @staticmethod
     def _module_prefix(base_name: str, base_path: str, root: str) -> str:

@@ -91,6 +91,35 @@ def test_hidden_and_node_modules_dirs_are_pruned_from_walk(tmp_path) -> None:
     assert discovered == {"myapp.service"}
 
 
+def test_nested_installed_app_is_pruned_from_the_outer_walk(
+    tmp_path, monkeypatch
+) -> None:
+    """A nested app is imported once, under its own dotted name.
+
+    Importing ``core.apps.shop.models`` on top of ``shop.models`` would
+    register a second ``core.Product`` model with no table.
+    """
+    outer_dir = tmp_path / "core"
+    nested_dir = outer_dir / "apps" / "shop"
+    nested_dir.mkdir(parents=True)
+    (outer_dir / "service.py").write_text("x = 1\n", encoding="utf-8")
+    (nested_dir / "models.py").write_text("x = 1\n", encoding="utf-8")
+
+    class OuterConfig:
+        name = "core"
+        path = str(outer_dir)
+
+    class NestedConfig:
+        name = "shop"
+        path = str(nested_dir)
+
+    outer, nested = OuterConfig(), NestedConfig()
+    monkeypatch.setattr(imports_module.apps, "get_app_configs", lambda: [outer, nested])
+
+    assert set(ImportsCheck._iter_app_modules(outer)) == {"core.service"}
+    assert set(ImportsCheck._iter_app_modules(nested)) == {"shop.models"}
+
+
 def test_module_prefix_root_uses_base_name() -> None:
     assert ImportsCheck._module_prefix("app", os.sep + "base", os.sep + "base") == "app"
 
