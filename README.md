@@ -164,7 +164,9 @@ mycheck = "mypackage.checks:MyCheck"
 
 Registered checks run like the built-in ones: they get their own pytest item,
 their name works with `--autocheck-only`/`--autocheck-skip` and the `CHECKS`/
-`SKIP` settings, and their `ERROR` findings fail the run.
+`SKIP` settings, and their `ERROR` findings fail the run. Check names must be
+unique: a check reusing the name of a built-in or of another third-party check
+is rejected.
 
 A check that never touches the database can declare `requires_db = False`:
 its pytest item then skips the database fixture, and running only such checks

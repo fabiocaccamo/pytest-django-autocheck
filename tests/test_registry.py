@@ -84,6 +84,51 @@ def test_load_entry_point_checks_rejects_invalid_objects(
         load_entry_point_checks()
 
 
+def test_broken_entry_point_is_raised_again_on_the_next_call(
+    monkeypatch, _entry_point
+) -> None:
+    _fake_entry_points(monkeypatch, object())
+    with pytest.raises(TypeError, match="third_party"):
+        load_entry_point_checks()
+    with pytest.raises(TypeError, match="third_party"):
+        load_entry_point_checks()
+
+
+def test_broken_entry_point_leaves_nothing_registered(
+    monkeypatch, _entry_point
+) -> None:
+    monkeypatch.setattr(
+        importlib.metadata,
+        "entry_points",
+        lambda group: [_FakeEntryPoint(_ThirdPartyCheck), _FakeEntryPoint(object())],
+    )
+    with pytest.raises(TypeError, match="third_party"):
+        load_entry_point_checks()
+    assert "third_party" not in {check.name for check in registry.checks}
+
+
+def test_entry_point_reusing_a_builtin_name_is_rejected(
+    monkeypatch, _entry_point
+) -> None:
+    class Impostor(BaseCheck):
+        name = "admin"
+
+    load_builtin_checks()
+    _fake_entry_points(monkeypatch, Impostor)
+    with pytest.raises(ValueError, match="'admin' is already registered"):
+        load_entry_point_checks()
+    names = [check.name for check in registry.checks]
+    assert names.count("admin") == 1
+
+
+def test_register_rejects_a_duplicate_name() -> None:
+    local_registry = CheckRegistry()
+    local_registry.register(_ThirdPartyCheck())
+    with pytest.raises(ValueError, match="'third_party' is already registered"):
+        local_registry.register(_ThirdPartyCheck())
+    assert len(local_registry.checks) == 1
+
+
 def test_finding_defaults() -> None:
     finding = Finding(
         check_name="demo",

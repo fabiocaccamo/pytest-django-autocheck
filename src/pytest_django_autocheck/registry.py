@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from importlib.metadata import EntryPoint
 
     from django.apps.config import AppConfig
 
@@ -81,6 +82,13 @@ class CheckRegistry:
         self._checks: list[Check] = []
 
     def register(self, check: Check) -> Check:
+        """Add ``check``, refusing a name that is already taken.
+
+        Names select checks (``--autocheck-only``) and identify their pytest
+        items, so two checks sharing one would be indistinguishable.
+        """
+        if any(registered.name == check.name for registered in self._checks):
+            raise ValueError(f"a check named '{check.name}' is already registered.")
         self._checks.append(check)
         return check
 
@@ -108,21 +116,32 @@ def load_entry_point_checks() -> None:
     Each entry point must resolve to a check class (instantiated with no
     arguments) or a ready check instance satisfying :class:`Check`. A broken
     entry point raises instead of being skipped: silently ignoring it would
-    green-light a project that believes its custom check is running.
+    green-light a project that believes its custom check is running. Every
+    entry point is loaded before any check is registered, and the group only
+    counts as loaded once all of them are, so a failure is raised again on
+    the next call instead of leaving the rest silently unregistered.
     """
     global _entry_points_loaded
     if _entry_points_loaded:
         return
-    _entry_points_loaded = True
     from importlib.metadata import entry_points
 
-    for entry_point in entry_points(group=ENTRY_POINT_GROUP):
-        loaded = entry_point.load()
-        check = loaded() if isinstance(loaded, type) else loaded
-        if not isinstance(check, Check):
-            raise TypeError(
-                f"entry point '{entry_point.name}' in group "
-                f"'{ENTRY_POINT_GROUP}' must provide a check with 'name', "
-                "'severity' and 'run(app_configs)'."
-            )
+    checks = [
+        _load_entry_point_check(entry_point)
+        for entry_point in entry_points(group=ENTRY_POINT_GROUP)
+    ]
+    for check in checks:
         registry.register(check)
+    _entry_points_loaded = True
+
+
+def _load_entry_point_check(entry_point: EntryPoint) -> Check:
+    loaded = entry_point.load()
+    check = loaded() if isinstance(loaded, type) else loaded
+    if not isinstance(check, Check):
+        raise TypeError(
+            f"entry point '{entry_point.name}' in group "
+            f"'{ENTRY_POINT_GROUP}' must provide a check with 'name', "
+            "'severity' and 'run(app_configs)'."
+        )
+    return check
